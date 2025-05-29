@@ -10,7 +10,6 @@ class Ventas extends Migration
         Schema::create('ventas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cliente_id')->constrained('clientes')->onDelete('cascade');
-            $table->foreignId('vestido_id')->constrained('vestidos')->onDelete('cascade');
             $table->date('fecha_venta');
             $table->decimal('precio_total', 10, 2);
             $table->timestamps();

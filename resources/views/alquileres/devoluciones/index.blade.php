@@ -43,7 +43,7 @@
                         <tr>
                             <th>Cliente</th>
                             <th>Prendas</th>
-                            <th>Fecha</th>
+                            <th>Fecha de Entrega</th>
                             <th>Tipo</th>
                             <th>Estado</th>
                             <th>Acciones</th>
@@ -55,8 +55,8 @@
                                 <td>{{ $registro->cliente->nombre }}</td>
                                 <td>
                                     <ul class="list-unstyled prenda-list">
-                                        @foreach($registro->prendas as $prenda)
-                                            <li>{{ $prenda->nombre }} ({{ $prenda->categoria }})</li>
+                                        @foreach($registro->stockItems as $prenda)
+                                            <li>{{ $prenda->nombre }} ({{ $prenda->codigo }})</li>
                                         @endforeach
                                     </ul>
                                 </td>
@@ -112,8 +112,8 @@
                                             <p>¿Está seguro de que desea marcar este {{ $registro->tipo === 'alquiler' ? 'alquiler' : 'reserva' }} como "Entregado"?</p>
                                             <p>Las siguientes prendas serán marcadas como disponibles:</p>
                                             <ul>
-                                                @foreach($registro->prendas as $prenda)
-                                                    <li>{{ $prenda->nombre }} ({{ $prenda->categoria }})</li>
+                                                @foreach($registro->stockItems as $prenda)
+                                                    <li>{{ $prenda->nombre }} ({{ $prenda->codigo }})</li>
                                                 @endforeach
                                             </ul>
                                         </div>

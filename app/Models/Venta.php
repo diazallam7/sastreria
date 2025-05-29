@@ -1,4 +1,5 @@
 <?php
+// Archivo: app/Models/Venta.php
 
 namespace App\Models;
 
@@ -9,15 +10,24 @@ class Venta extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['cliente_id', 'vestido_id', 'fecha_venta', 'precio_total'];
+    protected $fillable = [
+        'cliente_id',
+        'fecha_venta',
+        'precio_total',
+    ];
+
+    protected $casts = [
+        'fecha_venta' => 'date',
+        'precio_total' => 'decimal:2',
+    ];
 
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
     }
 
-    public function vestido()
+    public function detalles()
     {
-        return $this->belongsTo(Vestido::class);
+        return $this->hasMany(DetalleVenta::class);
     }
 }

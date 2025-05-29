@@ -1,11 +1,12 @@
 <?php
+// Archivo: app/Http/Controllers/DevolucionController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\Alquiler;
 use App\Models\Configuracion;
 use App\Models\Devolucion;
-use App\Models\Vestido;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,11 +15,11 @@ class DevolucionController extends Controller
     public function index()
     {
         // Obtener los alquileres con estados 1 (activo)
-        $alquileres = Alquiler::with('cliente', 'prendas')
+        $alquileres = Alquiler::with('cliente', 'stockItems')
             ->where('estado', 1)
             ->get();
 
-        // Combinar ambas colecciones con un identificador de tipo
+        // Combinar con un identificador de tipo
         $registros = $alquileres->map(function ($item) {
             $item->tipo = 'alquiler';
             return $item;
@@ -27,67 +28,176 @@ class DevolucionController extends Controller
         return view('alquileres.devoluciones.index', compact('registros'));
     }
 
-    public function actualizarEstado(Request $request, $id)
+    public function calcularMultas($id)
     {
-        $validated = $request->validate([
-            'estado' => 'required|in:2,3', // Validar que el estado sea "reservado" (2) o "alquilado" (3)
+        // Buscar el alquiler correspondiente
+        $alquiler = Alquiler::with('cliente', 'stockItems')->findOrFail($id);
+
+        // Obtener la configuración de la multa diaria
+        $multaDiaria = Configuracion::where('nombre', 'multa')->value('valor') ?? 10000;
+
+        // Calcular días de retraso SOLO POR FECHAS (sin considerar horas)
+        $fechaFin    = Carbon::parse($alquiler->fecha_fin)->startOfDay();
+        $fechaActual = Carbon::now()->startOfDay(); // Inicio del día actual
+
+        $diasRetraso = 0;
+        if ($fechaActual->gt($fechaFin)) {
+            $diasRetraso = $fechaFin->diffInDays($fechaActual); // o diffInDays($fechaFin, true)
+        }
+
+        // Calcular multa total
+        $multaTotal = $diasRetraso * $multaDiaria;
+
+        // Calcular monto a devolver
+        $garantiaOriginal = $alquiler->garantia ?? 0;
+        $montoDevolver    = max(0, $garantiaOriginal - $multaTotal);
+
+        return view('alquileres.devoluciones.multas', [
+            'alquiler'         => $alquiler,
+            'fechaFin'         => $fechaFin->format('d/m/Y'),
+            'fechaActual'      => $fechaActual->format('d/m/Y'),
+            'diasRetraso'      => $diasRetraso,
+            'multaDiaria'      => $multaDiaria,
+            'multaTotal'       => $multaTotal,
+            'garantiaOriginal' => $garantiaOriginal,
+            'montoDevolver'    => $montoDevolver,
+        ]);
+    }
+
+    public function procesarDevolucion(Request $request, $id)
+    {
+        $request->validate([
+            'observaciones' => 'nullable|string|max:1000',
         ]);
 
         DB::beginTransaction();
-        
-        try {
-            if ($validated['estado'] == 3) { // Estado "alquilado"
-                // Buscar el alquiler
-                $alquiler = Alquiler::with('prendas')->findOrFail($id);
 
-                // Actualizar el estado del alquiler y las prendas asociadas
-                $alquiler->update(['estado' => 2]); // Cambiar el estado del alquiler a "finalizado"
-                
-                foreach ($alquiler->stockItems as $prenda) {
+        try {
+            $alquiler = Alquiler::with('stockItems')->findOrFail($id);
+
+            // Obtener configuración de multa
+            $multaDiaria = Configuracion::where('nombre', 'multa')->value('valor') ?? 10000;
+
+            // Calcular días de retraso SOLO POR FECHAS
+            $fechaFin        = Carbon::parse($alquiler->fecha_fin)->startOfDay();
+            $fechaDevolucion = Carbon::now()->startOfDay();
+
+            $diasRetraso = 0;
+        if ($fechaDevolucion->gt($fechaFin)) {
+            $diasRetraso = $fechaFin->diffInDays($fechaDevolucion); // o diffInDays($fechaFin, true)
+        }
+
+
+            // Calcular multa total
+            $multaTotal = $diasRetraso * $multaDiaria;
+
+            // Calcular monto a devolver
+            $garantiaOriginal = $alquiler->garantia ?? 0;
+            $montoDevolver    = max(0, $garantiaOriginal - $multaTotal);
+
+            // Crear registro de devolución
+            $devolucion = Devolucion::create([
+                'alquiler_id'       => $alquiler->id,
+                'fecha_devolucion'  => $fechaDevolucion,
+                'retraso'           => $diasRetraso > 0 ? 1 : 0,
+                'multa'             => $multaTotal,
+                'garantia_original' => $garantiaOriginal,
+                'multa_aplicada'    => $multaTotal,
+                'monto_devuelto'    => $montoDevolver,
+                'dias_retraso'      => $diasRetraso,
+                'observaciones'     => $request->observaciones,
+            ]);
+
+                                                // Actualizar estado del alquiler
+            $alquiler->update(['estado' => 2]); // finalizado
+
+            // Actualizar estado de las prendas
+            foreach ($alquiler->stockItems as $prenda) {
                 $prenda->update(['estado' => 1]); // disponible
             }
-            }
-            
+
             DB::commit();
-            
-            return redirect()->route('devoluciones.index')->with('success', 'Prendas Entregadas Correctamente!.');
+
+            return redirect()->route('devoluciones.comprobante', $devolucion->id)
+                ->with('success', 'Devolución procesada correctamente');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al actualizar el estado: ' . $e->getMessage()]);
+            return back()->with('error', 'Error al procesar la devolución: ' . $e->getMessage());
         }
     }
 
-    public function calcularMultas($id)
+    public function comprobante($id)
     {
-        // Buscar el alquiler correspondiente con las relaciones necesarias
-        $alquiler = Alquiler::with('cliente', 'prendas')->findOrFail($id);
+        $devolucion = Devolucion::with(['alquiler.cliente', 'alquiler.stockItems'])->findOrFail($id);
 
-        // Obtener la configuración de la multa diaria
-        $multaDiaria = Configuracion::where('nombre', 'multa')->value('valor') ?? 10000; // Valor predeterminado si no existe
+        return view('alquileres.devoluciones.comprobante', compact('devolucion'));
+    }
 
-        // Calcular días de retraso manualmente
-        $fechaFin = strtotime($alquiler->fecha_fin); // Convertir fecha_fin a timestamp
-        $fechaActual = strtotime(now()); // Convertir la fecha actual a timestamp
+    public function historial()
+    {
+        $devoluciones = Devolucion::with(['alquiler.cliente'])
+            ->orderBy('fecha_devolucion', 'desc')
+            ->paginate(15);
 
-        $diasRetraso = 0;
+        return view('alquileres.devoluciones.historial', compact('devoluciones'));
+    }
 
-        // Calcular la diferencia en días (si aplica)
-        if ($fechaActual > $fechaFin) {
-            $segundosDiferencia = $fechaActual - $fechaFin;
-            $diasRetraso = floor($segundosDiferencia / 86400); // 86400 segundos en un día
+    // Método actualizado para el proceso simple
+    public function actualizarEstado(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'estado' => 'required|in:2,3',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            if ($validated['estado'] == 3) {
+                $alquiler = Alquiler::with('stockItems')->findOrFail($id);
+
+                // Calcular automáticamente la devolución SOLO POR FECHAS
+                $multaDiaria     = Configuracion::where('nombre', 'multa')->value('valor') ?? 10000;
+                $fechaFin        = Carbon::parse($alquiler->fecha_fin)->startOfDay();
+                $fechaDevolucion = Carbon::now()->startOfDay();
+
+                $diasRetraso = 0;
+        if ($fechaDevolucion->gt($fechaFin)) {
+            $diasRetraso = $fechaFin->diffInDays($fechaDevolucion); // o diffInDays($fechaFin, true)
         }
 
-        // Calcular multa acumulada solo si hay días de retraso
-        $multaTotal = $diasRetraso * $multaDiaria;
+                $multaTotal       = $diasRetraso * $multaDiaria;
+                $garantiaOriginal = $alquiler->garantia ?? 0;
+                $montoDevolver    = max(0, $garantiaOriginal - $multaTotal);
 
-        // Pasar datos a la vista
-        return view('alquileres.devoluciones.multas', [
-            'alquiler' => $alquiler,
-            'fechaFin' => date('d/m/Y', $fechaFin),
-            'fechaActual' => date('d/m/Y', $fechaActual),
-            'diasRetraso' => $diasRetraso,
-            'multaDiaria' => $multaDiaria,
-            'multaTotal' => $multaTotal,
-        ]);
+                // Crear registro de devolución
+                Devolucion::create([
+                    'alquiler_id'       => $alquiler->id,
+                    'fecha_devolucion'  => $fechaDevolucion,
+                    'retraso'           => $diasRetraso > 0 ? 1 : 0,
+                    'multa'             => $multaTotal,
+                    'garantia_original' => $garantiaOriginal,
+                    'multa_aplicada'    => $multaTotal,
+                    'monto_devuelto'    => $montoDevolver,
+                    'dias_retraso'      => $diasRetraso,
+                    'observaciones'     => 'Devolución procesada automáticamente',
+                ]);
+
+                $alquiler->update(['estado' => 2]);
+
+                foreach ($alquiler->stockItems as $prenda) {
+                    $prenda->update(['estado' => 1]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('devoluciones.index')
+                ->with('success', 'Devolución procesada correctamente. Monto a devolver: ₲ ' . number_format($montoDevolver ?? 0, 0, ',', '.'));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error al procesar la devolución: ' . $e->getMessage());
+        }
     }
 }

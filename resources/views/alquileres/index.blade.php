@@ -57,8 +57,6 @@
                                 <td>{{ $alquiler->cliente->nombre }}
                                     {{ $alquiler->cliente->correo }}</td>
                                 </td>
-                                {{-- En resources/views/alquileres/index.blade.php --}}
-                                {{-- En resources/views/alquileres/index.blade.php --}}
                                 <td>
                                     <ul class="list-unstyled mb-0">
                                         @foreach ($alquiler->stockItems as $prenda)
@@ -114,10 +112,11 @@
                                             <button type="button" class="btn btn-success" data-bs-toggle="modal"
                                                 data-bs-target="#devolverModal-{{ $alquiler->id }}">Devolver</button>
                                         @endif
+                                        @can('eliminar-alquiler')
+                                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                                data-bs-target="#eliminarModal-{{ $alquiler->id }}">Eliminar</button>
+                                        @endcan
 
-                                        <!-- Botón para eliminar -->
-                                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
-                                            data-bs-target="#eliminarModal-{{ $alquiler->id }}">Eliminar</button>
                                     </div>
 
             </div>

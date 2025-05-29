@@ -5,14 +5,16 @@ use App\Http\Controllers\homeController;
 use App\Http\Controllers\loginController;
 use App\Http\Controllers\logoutController;
 use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\VestidoController;
 use App\Http\Controllers\AlquilerController;
+use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\VentaController;
 use App\Http\Controllers\profileController;
 use App\Http\Controllers\roleController;
 use App\Http\Controllers\userController;
 use App\Http\Controllers\DevolucionController;
+use App\Http\Controllers\GastoVarioController;
+use App\Http\Controllers\ProductoVentaController;
 
 Route::get('/',[homeController::class,'index'])->name('panel');
 route::resource('profiles',profileController::class);
@@ -20,7 +22,6 @@ route::resource('users',userController::class);
 route::resource('roles',roleController::class);
 
 
-Route::view('/panel','panel.index')->name('panel');
 
 Route::prefix('clientes')->name('clientes.')->group(function () {
     Route::get('/', [ClienteController::class, 'index'])->name('index'); // Listar clientes
@@ -34,15 +35,6 @@ Route::prefix('clientes')->name('clientes.')->group(function () {
     Route::get('clientes/{cliente}/historial', [ClienteController::class, 'historial'])->name('clientes.historial');
 });
 
-Route::prefix('vestidos')->name('vestidos.')->group(function () {
-    Route::get('/', [VestidoController::class, 'index'])->name('index'); // Listar vestidos
-    Route::get('/crear', [VestidoController::class, 'create'])->name('create'); // Crear vestido
-    Route::post('/', [VestidoController::class, 'store'])->name('store'); // Guardar vestido
-    Route::get('/{vestido}/editar', [VestidoController::class, 'edit'])->name('edit'); // Editar vestido
-    Route::put('/{vestido}', [VestidoController::class, 'update'])->name('update'); // Actualizar vestido
-    Route::delete('/{vestido}', [VestidoController::class, 'destroy'])->name('destroy'); // Eliminar vestido
-
-});
 
 Route::get('configuraciones', [ConfiguracionController::class, 'index'])->name('configuraciones.index');
 Route::patch('configuraciones', [ConfiguracionController::class, 'update'])->name('configuraciones.update');
@@ -58,22 +50,60 @@ Route::prefix('alquileres')->name('alquileres.')->group(function () {
 Route::patch('/alquileres/{alquiler}/devolver', [AlquilerController::class, 'devolver'])->name('alquileres.devolver');
 });
 
-Route::prefix('ventas')->name('ventas.')->group(function () {
-    Route::get('/', [VentaController::class, 'index'])->name('index'); // Listar ventas
-    Route::get('/crear', [VentaController::class, 'create'])->name('create'); // Crear venta
-    Route::post('/', [VentaController::class, 'store'])->name('store'); // Guardar venta
-    Route::delete('/{venta}', [VentaController::class, 'destroy'])->name('destroy'); // Eliminar venta
+Route::prefix('compras')->name('compras.')->group(function () {
+    Route::get('/', [CompraController::class, 'index'])->name('index');
+    Route::get('/create', [CompraController::class, 'create'])->name('create');
+    Route::post('/', [CompraController::class, 'store'])->name('store');
+    Route::get('/{compra}', [CompraController::class, 'show'])->name('show');
+    Route::get('/{compra}/edit', [CompraController::class, 'edit'])->name('edit');
+    Route::put('/{compra}', [CompraController::class, 'update'])->name('update');
+    Route::delete('/{compra}', [CompraController::class, 'destroy'])->name('destroy');
+    Route::patch('/{compra}/activar', [CompraController::class, 'activarParaVenta'])->name('activar');
+    Route::patch('/{compra}/desactivar', [CompraController::class, 'desactivarParaVenta'])->name('desactivar');
 });
-Route::post('/ventas/obtener-precio', [VentaController::class, 'obtenerPrecio'])->name('ventas.obtenerPrecio');
+
+// Rutas para productos de venta manuales
+Route::prefix('productos-venta')->name('productos-venta.')->group(function () {
+    Route::get('/', [ProductoVentaController::class, 'index'])->name('index');
+    Route::get('/create', [ProductoVentaController::class, 'create'])->name('create');
+    Route::post('/', [ProductoVentaController::class, 'store'])->name('store');
+    Route::get('/{producto}', [ProductoVentaController::class, 'show'])->name('show');
+    Route::get('/{producto}/edit', [ProductoVentaController::class, 'edit'])->name('edit');
+    Route::put('/{producto}', [ProductoVentaController::class, 'update'])->name('update');
+    Route::delete('/{producto}', [ProductoVentaController::class, 'destroy'])->name('destroy');
+});
+Route::prefix('ventas')->name('ventas.')->group(function () {
+    Route::get('/', [VentaController::class, 'index'])->name('index');
+    Route::get('/crear', [VentaController::class, 'create'])->name('create');
+    Route::post('/', [VentaController::class, 'store'])->name('store');
+    Route::get('/{venta}', [VentaController::class, 'show'])->name('show');
+    Route::get('/{venta}/edit', [VentaController::class, 'edit'])->name('edit');
+    Route::put('/{venta}', [VentaController::class, 'update'])->name('update');
+    Route::delete('/{venta}', [VentaController::class, 'destroy'])->name('destroy');
+    
+    // Rutas AJAX para obtener datos dinámicos
+    Route::post('/obtener-talles', [VentaController::class, 'obtenerTalles'])->name('obtenerTalles');
+    Route::post('/obtener-precio', [VentaController::class, 'obtenerPrecio'])->name('obtenerPrecio');
+});
+
+Route::resource('gastos-varios', GastoVarioController::class)->names([
+    'index' => 'gastos-varios.index',
+    'create' => 'gastos-varios.create',
+    'store' => 'gastos-varios.store',
+    'edit' => 'gastos-varios.edit',
+    'update' => 'gastos-varios.update',
+    'destroy' => 'gastos-varios.destroy'
+]);
 
 
-
-
-Route::get('/devoluciones', [DevolucionController::class, 'index'])->name('devoluciones.index');
-Route::post('/devoluciones/{id}/procesar', [DevolucionController::class, 'procesar'])->name('devoluciones.procesar');
-Route::get('/devoluciones/calcular-multas/{id}', [DevolucionController::class, 'calcularMultas'])->name('devoluciones.calcular-multas');
-Route::post('/devoluciones/actualizar-estado/{id}', [DevolucionController::class, 'actualizarEstado'])->name('devoluciones.actualizar-estado');
-
+Route::prefix('devoluciones')->name('devoluciones.')->group(function () {
+    Route::get('/', [DevolucionController::class, 'index'])->name('index');
+    Route::get('/calcular-multas/{id}', [DevolucionController::class, 'calcularMultas'])->name('calcular-multas');
+    Route::post('/procesar/{id}', [DevolucionController::class, 'procesarDevolucion'])->name('procesar');
+    Route::get('/comprobante/{id}', [DevolucionController::class, 'comprobante'])->name('comprobante');
+    Route::get('/historial', [DevolucionController::class, 'historial'])->name('historial');
+    Route::post('/actualizar-estado/{id}', [DevolucionController::class, 'actualizarEstado'])->name('actualizar-estado');
+});
 
 
 use App\Http\Controllers\ReporteController;

@@ -11,7 +11,6 @@ class Alquileres extends Migration
         Schema::create('alquileres', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cliente_id')->constrained('clientes')->onDelete('cascade');
-            $table->foreignId('vestido_id')->constrained('vestidos')->onDelete('cascade');
             $table->date('fecha_inicio');
             $table->date('fecha_fin');
             $table->decimal('costo_total', 10, 2);

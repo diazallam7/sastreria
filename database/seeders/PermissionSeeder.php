@@ -21,16 +21,19 @@ class PermissionSeeder extends Seeder
             //compra
             'ver-compra',
             'crear-compra',
+            'editar-compra',
             'mostrar-compra',
             'eliminar-compra',
             //producto
-            'ver-producto',
-            'crear-producto',
-            'editar-producto',
-            'eliminar-producto',
+            'ver-stock-alquiler',
+            'crear-stock-alquiler',
+            'editar-stock-alquiler',
+            'eliminar-stock-alquiler',
+            'mostrar-stock-alquiler',
             //venta
             'ver-venta',
             'crear-venta',
+            'editar-venta',
             'mostrar-venta',
             'eliminar-venta',
             //roles
@@ -43,10 +46,21 @@ class PermissionSeeder extends Seeder
             'crear-user',
             'editar-user',
             'eliminar-user',
+            //alquiler 
+            'ver-alquiler',
+            'crear-alquiler',
+            'editar-alquiler',
+            'eliminar-alquiler',
+            'mostrar-alquiler',
+            //configuracion
+            'ver-configuracion',
+            'editar-configuracion',
+            
         ];
 
         foreach($permisos as $permiso){
             Permission::create(['name'=>$permiso]);
         }
+
     }
 }

@@ -30,11 +30,7 @@ class Alquiler extends Model
         return $this->belongsTo(Cliente::class);
     }
 
-    // Relación existente con prendas (vestidos)
-    public function prendas()
-    {
-        return $this->belongsToMany(Vestido::class, 'alquiler_prenda', 'alquiler_id', 'prenda_id');
-    }
+    
 
     // Nueva relación con stock de alquiler
     public function stockItems()

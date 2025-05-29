@@ -7,6 +7,18 @@ use Illuminate\Http\Request;
 
 class ClienteController extends Controller
 {
+
+public static function middleware(): array {
+
+       return [
+        
+          new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-cliente|crear-cliente|editar-cliente|eliminar-cliente'),only:['index']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('crear-cliente'), only:['create','store']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-cliente'),only:['edit','update']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('eliminar-cliente'), only:['destroy']),
+        ]; 
+     }
+
     public function index()
     {
         $clientes = Cliente::all();

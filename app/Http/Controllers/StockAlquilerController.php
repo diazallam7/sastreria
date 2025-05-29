@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class StockAlquilerController extends Controller
 {
+
+public static function middleware(): array {
+
+       return [
+        
+          new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-stock-alquiler|crear-stock-alquiler|editar-stock-alquiler|eliminar-stock-alquiler'),only:['index']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('crear-stock-alquiler'), only:['create','store']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-stock-alquiler'),only:['edit','update']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('eliminar-stock-alquiler'), only:['destroy']),
+        ]; 
+     }
+
     public function index()
     {
         $items = StockAlquiler::with('talles')->get();

@@ -16,10 +16,6 @@ class Cliente extends Model
         return $this->hasMany(Alquiler::class);
     }
 
-    public function reservas()
-    {
-        return $this->hasMany(Reserva::class);
-    }
 
     public function ventas()
     {

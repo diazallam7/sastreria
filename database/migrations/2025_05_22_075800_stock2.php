@@ -8,8 +8,6 @@ return new class extends Migration
 {
     public function up()
     {
-        // Primero, verifica si hay datos en la tabla que quieras preservar
-        // Si es necesario, puedes hacer un respaldo de los datos aquí
 
         // Elimina las tablas en orden inverso si ya existen
         if (Schema::hasTable('alquiler_stock')) {

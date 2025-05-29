@@ -14,22 +14,6 @@ class ReporteController extends Controller
         return view('reportes.index');
     }
 
-    public function alquileres(Request $request)
-    {
-        $fechaInicio = $request->input('fecha_inicio');
-        $fechaFin = $request->input('fecha_fin');
-
-        $alquileres = Alquiler::with('cliente', 'vestido')
-            ->when($fechaInicio, function ($query) use ($fechaInicio) {
-                return $query->whereDate('fecha_inicio', '>=', $fechaInicio);
-            })
-            ->when($fechaFin, function ($query) use ($fechaFin) {
-                return $query->whereDate('fecha_fin', '<=', $fechaFin);
-            })
-            ->get();
-
-        return view('reportes.alquileres', compact('alquileres', 'fechaInicio', 'fechaFin'));
-    }
 
 
 

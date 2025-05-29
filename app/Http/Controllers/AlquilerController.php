@@ -12,6 +12,18 @@ use Carbon\Carbon;
 
 class AlquilerController extends Controller
 {
+
+public static function middleware(): array {
+
+       return [
+        
+          new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-alquiler|crear-alquiler|editar-alquiler|eliminar-alquiler'),only:['index']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('crear-alquiler'), only:['create','store']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-alquiler'),only:['edit','update']),
+         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('eliminar-alquiler'), only:['destroy']),
+        ]; 
+     }
+
     public function index()
     {
         $alquileres = Alquiler::with('cliente', 'stockItems')->get();
