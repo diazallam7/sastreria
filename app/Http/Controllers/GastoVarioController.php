@@ -10,18 +10,9 @@ use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 
-class GastoVarioController extends Controller implements HasMiddleware
+class GastoVarioController extends Controller
 {
-    public static function middleware(): array {
 
-       return [
-        
-          new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-role|crear-role|editar-role|eliminar-role'),only:['index']),
-         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('crear-role'), only:['create','store']),
-         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-role'),only:['edit','update']),
-         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('eliminar-role'), only:['destroy']),
-        ]; 
-     }
     public function index()
     {
         $gastos = GastoVario::orderBy('fecha', 'desc')->paginate(10);

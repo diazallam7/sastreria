@@ -55,6 +55,12 @@ class PermissionSeeder extends Seeder
             //configuracion
             'ver-configuracion',
             'editar-configuracion',
+            'ver-cierre-caja',
+            'crear-cierre-caja',
+            'editar-cierre-caja',
+            'exportar-cierre-caja',
+            'ver-cierre-caja-semanal',
+            'ver-cierre-caja-mensual'
             
         ];
 

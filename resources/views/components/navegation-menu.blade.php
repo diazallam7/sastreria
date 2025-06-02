@@ -66,10 +66,15 @@
                     </a>
                 @endcan
 
+                    <a class="nav-link" href="{{ route('reservas.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fa-regular fa-pen-to-square"></i></div>
+                        Reservas
+                    </a>
+
                 @can('ver-alquiler')
                     <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseVenta"
                         aria-expanded="false" aria-controls="collapseLayouts">
-                        <div class="sb-nav-link-icon"><i class="fa-solid fa-retweet"></i></div>
+                        <div class="sb-nav-link-icon"><i class="fa-regular fa-handshake"></i></div>
                         Alquileres
                         <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                     </a>
@@ -84,11 +89,20 @@
                 @endcan
 
 
-
-                <a class="nav-link" href="{{ route('devoluciones.index') }}">
-                    <div class="sb-nav-link-icon"><i class="fa-solid fa-arrows-turn-to-dots"></i></i></div>
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse"
+                    data-bs-target="#collapseDevoluciones" aria-expanded="false" aria-controls="collapseLayouts">
+                    <div class="sb-nav-link-icon"><i class="fa-solid fa-retweet"></i></div>
                     Devoluciones
+                    <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                 </a>
+                <div class="collapse" id="collapseDevoluciones" aria-labelledby="headingOne"
+                    data-bs-parent="#sidenavAccordion">
+                    <nav class="sb-sidenav-menu-nested nav">
+
+                        <a class="nav-link" href="{{ route('devoluciones.index') }}">Pendientes</a>
+                        <a class="nav-link" href="{{ route('devoluciones.historial') }}">Historial</a>
+                    </nav>
+                </div>
 
                 @can('ver-cliente')
                     <a class="nav-link" href="{{ route('clientes.index') }}">
@@ -107,12 +121,12 @@
                 @endcan
 
 
-               <!---@can('ver-role')
-                    <a class="nav-link" href="{{ route('roles.index') }}">
-                        <div class="sb-nav-link-icon"><i class="fa-solid fa-shield-halved"></i></i></div>
-                        Roles
-                    </a>
-                @endcan -->
+                <!---@can('ver-role')
+    <a class="nav-link" href="{{ route('roles.index') }}">
+                                <div class="sb-nav-link-icon"><i class="fa-solid fa-shield-halved"></i></i></div>
+                                Roles
+                            </a>
+@endcan -->
 
                 <!---<a class="nav-link" href="{{ route('reportes.index') }}">
                     <div class="sb-nav-link-icon"><i class="fa-solid fa-pencil"></i></div>
@@ -120,17 +134,25 @@
                 </a> -->
                 @can('ver-compra')
                     <a class="nav-link" href="{{ route('configuraciones.index') }}">
-                    <div class="sb-nav-link-icon"><i class="fa-solid fa-gear"></i></div>
-                    Configuración de Multas
-                </a>
+                        <div class="sb-nav-link-icon"><i class="fa-solid fa-gear"></i></div>
+                        Configuración de Multas
+                    </a>
                 @endcan
-                
+
                 @can('ver-compra')
                     <li class="nav-item">
-                    <a class="nav-link" href="{{ route('gastos-varios.index') }}">
-                        <i class="fas fa-receipt me-2"></i>Gastos Varios
+                        <a class="nav-link" href="{{ route('gastos-varios.index') }}">
+                            <div class="sb-nav-link-icon"><i class="fa-solid fa-money-bill"></i></div>
+                            Gastos Varios
+                        </a>
+                    </li>
+                @endcan
+
+                @can('ver-compra')
+                    <a class="nav-link" href="{{ route('cierre-caja.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fas fa-cash-register"></i></div>
+                            Ingreso y Egresos
                     </a>
-                </li>
                 @endcan
 
 

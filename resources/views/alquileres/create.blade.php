@@ -5,6 +5,9 @@
 
 @push('css')
     <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         .prenda-card {
             border: 1px solid #dee2e6;
@@ -54,6 +57,13 @@
         .talle-selector.active {
             display: block;
         }
+        .no-results {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+            display: none;
+        }
     </style>
 @endpush
 
@@ -74,7 +84,7 @@
                 <form action="{{ route('alquileres.store') }}" method="POST" id="alquilerForm">
                     @csrf
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <label for="cliente_id" class="form-label">Cliente</label>
                             <select class="form-select @error('cliente_id') is-invalid @enderror" name="cliente_id"
                                 id="cliente_id" required>
@@ -82,13 +92,19 @@
                                 @foreach ($clientes as $cliente)
                                     <option value="{{ $cliente->id }}"
                                         {{ old('cliente_id') == $cliente->id ? 'selected' : '' }}>
-                                        {{ $cliente->nombre }}
+                                        {{ $cliente->nombre }} - {{ $cliente->correo ?? 'Sin cedula' }}
                                     </option>
                                 @endforeach
                             </select>
                             @error('cliente_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#modalNuevoCliente" title="Nuevo Cliente">
+                                <i class="fas fa-plus"></i>
+                            </button>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Prendas</label>
@@ -130,24 +146,25 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="costo_total" class="form-label">Costo Total (₲)</label>
-                        <input type="number" step="0.01" class="form-control @error('costo_total') is-invalid @enderror"
-                            name="costo_total" id="costo_total" value="{{ old('costo_total') }}"
-                            placeholder="Ingrese el costo total" required>
-                        @error('costo_total')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="garantia" class="form-label">Garantia (₲)</label>
-                        <input type="number" step="0.01" class="form-control @error('garantia') is-invalid @enderror"
-                            name="garantia" id="garantia" value="{{ old('garantia') }}"
-                            placeholder="Ingrese la garantia" required>
-                        @error('garantia')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="costo_total" class="form-label">Costo Total (₲)</label>
+                            <input type="number" step="0.01" class="form-control @error('costo_total') is-invalid @enderror"
+                                name="costo_total" id="costo_total" value="{{ old('costo_total') }}"
+                                placeholder="Se calculará automáticamente" readonly>
+                            @error('costo_total')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="garantia" class="form-label">Garantía (₲)</label>
+                            <input type="number" step="0.01" class="form-control @error('garantia') is-invalid @enderror"
+                                name="garantia" id="garantia" value="{{ old('garantia') }}"
+                                placeholder="Ingrese la garantía" required>
+                            @error('garantia')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
 
                     <input type="hidden" name="estado" value="1">
@@ -174,12 +191,14 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <input type="text" class="form-control" id="searchPrendas" placeholder="Buscar prendas...">
+                        <input type="text" class="form-control" id="searchPrendas" placeholder="Buscar prendas por nombre o descripción...">
                     </div>
                     
-                    <div class="prenda-list">
-                        @foreach ($prendas as $prenda)
-                            <div class="prenda-card" data-id="{{ $prenda->id }}" data-nombre="{{ $prenda->nombre }}" 
+                    <div class="prenda-list" id="prendaList">
+                        @foreach ($stockItems as $prenda)
+                            <div class="prenda-card" data-id="{{ $prenda->id }}" 
+                                 data-nombre="{{ strtolower($prenda->nombre) }}" 
+                                 data-descripcion="{{ strtolower($prenda->descripcion ?? '') }}"
                                  data-precio="{{ $prenda->precio_alquiler }}">
                                 <div class="form-check">
                                     <input class="form-check-input prenda-checkbox" type="checkbox" value="{{ $prenda->id }}" 
@@ -187,7 +206,10 @@
                                     <label class="form-check-label w-100" for="prenda{{ $prenda->id }}">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <strong>{{ $prenda->nombre }}</strong> <span class="text-muted">({{ $prenda->codigo }})</span>
+                                                <strong>{{ $prenda->nombre }}</strong>
+                                                @if($prenda->descripcion)
+                                                    <div class="text-muted small">{{ $prenda->descripcion }}</div>
+                                                @endif
                                                 <div class="text-muted">
                                                     Talles disponibles: 
                                                     @foreach($prenda->talles as $talle)
@@ -230,6 +252,10 @@
                             </div>
                         @endforeach
                     </div>
+                    
+                    <div class="no-results" id="noResults">
+                        No se encontraron prendas que coincidan con la búsqueda.
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -238,46 +264,118 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal para Nuevo Cliente -->
+    <div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Crear Nuevo Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formNuevoCliente">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="nuevo_nombre" class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="nuevo_nombre" name="nombre" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nuevo_telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="nuevo_telefono" name="telefono">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="nuevo_correo" class="form-label">Cédula</label>
+                                <input type="text" class="form-control" id="nuevo_correo" name="correo">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nueva_direccion" class="form-label">Dirección</label>
+                                <input type="text" class="form-control" id="nueva_direccion" name="direccion">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Crear Cliente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('js')
+    <!-- Asegurar que jQuery esté cargado ANTES que otros scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
     <script>
-        flatpickr("#fecha_inicio", {
-            enableTime: false,
-            dateFormat: "Y-m-d",
-            locale: "es"
-        });
-        flatpickr("#fecha_fin", {
-            enableTime: false,
-            dateFormat: "Y-m-d",
-            locale: "es"
-        });
-        
-        document.addEventListener('DOMContentLoaded', function() {
+        $(document).ready(function() {
+            console.log('jQuery cargado:', typeof $ !== 'undefined');
+            
+            // Variables globales
             const selectedPrendas = new Map();
-            const prendasPreview = document.getElementById('prendasPreview');
-            const selectedPrendasContainer = document.getElementById('selectedPrendasContainer');
-            const noPrendasSelected = document.getElementById('noPrendasSelected');
-            const prendasIdsContainer = document.getElementById('prendasIdsContainer');
-            const costoTotalInput = document.getElementById('costo_total');
-            const searchInput = document.getElementById('searchPrendas');
-            const prendaCards = document.querySelectorAll('.prenda-card');
+            
+            // Inicializar flatpickr
+            flatpickr("#fecha_inicio", {
+                enableTime: false,
+                dateFormat: "Y-m-d",
+                locale: "es"
+            });
+            
+            flatpickr("#fecha_fin", {
+                enableTime: false,
+                dateFormat: "Y-m-d",
+                locale: "es"
+            });
+
+            // Inicializar Select2 para clientes
+            $('#cliente_id').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Buscar cliente...',
+                allowClear: true,
+                language: {
+                    noResults: function() {
+                        return "No se encontraron clientes";
+                    },
+                    searching: function() {
+                        return "Buscando...";
+                    }
+                }
+            });
+
+            // Función para calcular costo total (solo suma de precios de prendas)
+            function calcularCostoTotal() {
+                let costoTotal = 0;
+                
+                selectedPrendas.forEach((prenda) => {
+                    costoTotal += parseFloat(prenda.precio) * parseInt(prenda.cantidad);
+                });
+                
+                document.getElementById('costo_total').value = costoTotal.toFixed(2);
+            }
             
             // Función para actualizar la vista previa de prendas seleccionadas
             function updatePrendasPreview() {
+                const selectedPrendasContainer = document.getElementById('selectedPrendasContainer');
+                const noPrendasSelected = document.getElementById('noPrendasSelected');
+                const prendasIdsContainer = document.getElementById('prendasIdsContainer');
+                
                 selectedPrendasContainer.innerHTML = '';
                 prendasIdsContainer.innerHTML = '';
                 
                 if (selectedPrendas.size === 0) {
                     noPrendasSelected.style.display = 'block';
-                    costoTotalInput.value = '0';
+                    document.getElementById('costo_total').value = '0';
                     return;
                 }
                 
                 noPrendasSelected.style.display = 'none';
                 
-                let costoTotal = 0;
                 let index = 0;
                 
                 selectedPrendas.forEach((prenda, id) => {
@@ -285,7 +383,7 @@
                     const prendaElement = document.createElement('div');
                     prendaElement.className = 'prenda-preview-item';
                     prendaElement.innerHTML = `
-                        ${prenda.nombre} (${prenda.codigo}) - Talle: ${prenda.talleName} - Cant: ${prenda.cantidad}
+                        ${prenda.nombre} - Talle: ${prenda.talleName} - Cant: ${prenda.cantidad} - ₲${parseFloat(prenda.precio * prenda.cantidad).toLocaleString()}
                         <span class="remove-prenda" data-id="${id}">
                             <i class="fas fa-times"></i>
                         </span>
@@ -311,13 +409,11 @@
                     cantidadInput.value = prenda.cantidad;
                     prendasIdsContainer.appendChild(cantidadInput);
                     
-                    // Sumar al costo total
-                    costoTotal += parseFloat(prenda.precio) * parseInt(prenda.cantidad);
                     index++;
                 });
                 
-                // Actualizar el costo total
-                costoTotalInput.value = costoTotal.toFixed(2);
+                // Calcular costo total
+                calcularCostoTotal();
                 
                 // Agregar event listeners para eliminar prendas
                 document.querySelectorAll('.remove-prenda').forEach(btn => {
@@ -382,8 +478,7 @@
                     const talleName = this.options[this.selectedIndex].text.split(' (')[0];
                     
                     selectedPrendas.set(prendaId, {
-                        nombre: card.getAttribute('data-nombre'),
-                        codigo: card.getAttribute('data-codigo'),
+                        nombre: card.querySelector('strong').textContent,
                         precio: card.getAttribute('data-precio'),
                         talleId: this.value,
                         talleName: talleName,
@@ -414,31 +509,112 @@
             });
             
             // Event listener para buscar prendas
-            searchInput.addEventListener('input', function() {
+            document.getElementById('searchPrendas').addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
+                const prendaCards = document.querySelectorAll('.prenda-card');
+                const noResults = document.getElementById('noResults');
+                let hasResults = false;
                 
                 prendaCards.forEach(card => {
-                    const nombre = card.getAttribute('data-nombre').toLowerCase();
-                    const codigo = card.getAttribute('data-codigo').toLowerCase();
+                    const nombre = card.getAttribute('data-nombre') || '';
+                    const descripcion = card.getAttribute('data-descripcion') || '';
                     
-                    if (nombre.includes(searchTerm) || codigo.includes(searchTerm) ) {
+                    if (nombre.includes(searchTerm) || descripcion.includes(searchTerm) || searchTerm === '') {
                         card.style.display = 'block';
+                        hasResults = true;
                     } else {
                         card.style.display = 'none';
                     }
                 });
+                
+                // Mostrar/ocultar mensaje de "no hay resultados"
+                noResults.style.display = (!hasResults && searchTerm !== '') ? 'block' : 'none';
             });
             
-            // Event listener para el formulario
+            // Event listener para el formulario principal
             document.getElementById('alquilerForm').addEventListener('submit', function(e) {
                 if (selectedPrendas.size === 0) {
                     e.preventDefault();
-                    alert('Debe seleccionar al menos una prenda');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atención',
+                        text: 'Debe seleccionar al menos una prenda'
+                    });
                 }
+            });
+
+            // Crear nuevo cliente
+            $('#formNuevoCliente').on('submit', function(e) {
+                e.preventDefault();
+                console.log('Formulario de cliente enviado');
+                
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Creando cliente...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                const formData = new FormData(this);
+                
+                fetch('{{ route("clientes.store") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => {
+                    console.log('Respuesta recibida:', response);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Datos:', data);
+                    
+                    if (data.success) {
+                        // Agregar el nuevo cliente al select
+                        const newOption = new Option(
+                            data.cliente.nombre + ' - ' + (data.cliente.telefono || 'Sin teléfono'),
+                            data.cliente.id,
+                            true,
+                            true
+                        );
+                        $('#cliente_id').append(newOption).trigger('change');
+
+                        // Cerrar modal y limpiar formulario
+                        $('#modalNuevoCliente').modal('hide');
+                        document.getElementById('formNuevoCliente').reset();
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cliente creado exitosamente',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    } else {
+                        throw new Error(data.message || 'Error desconocido');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al crear el cliente: ' + error.message
+                    });
+                });
             });
             
             // Inicializar la vista previa
             updatePrendasPreview();
+            
+            // Hacer función disponible globalmente
+            window.calcularCostoTotal = calcularCostoTotal;
         });
     </script>
 @endpush

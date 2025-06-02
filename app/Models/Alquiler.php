@@ -1,4 +1,5 @@
 <?php
+// Archivo: app/Models/Alquiler.php - Actualización
 
 namespace App\Models;
 
@@ -9,7 +10,7 @@ class Alquiler extends Model
 {
     use HasFactory;
 
-     protected $table = 'alquileres';
+    protected $table = 'alquileres';
     protected $fillable = [
         'cliente_id',
         'fecha_inicio',
@@ -17,7 +18,6 @@ class Alquiler extends Model
         'costo_total',
         'garantia',
         'estado'
-
     ];
 
     protected $casts = [
@@ -30,11 +30,18 @@ class Alquiler extends Model
         return $this->belongsTo(Cliente::class);
     }
 
-    
-
-    // Nueva relación con stock de alquiler
     public function stockItems()
+{
+    return $this->belongsToMany(StockAlquiler::class, 'alquiler_stock', 'alquiler_id', 'stock_id')
+           ->withPivot('talle_id', 'cantidad')
+           ->withTimestamps(); // opcional, si quieres incluir created_at y updated_at
+}
+
+    // Nueva relación con reserva
+    public function reserva()
     {
-        return $this->belongsToMany(StockAlquiler::class, 'alquiler_stock', 'alquiler_id', 'stock_id');
+        return $this->hasOne(Reserva::class);
     }
+
+
 }

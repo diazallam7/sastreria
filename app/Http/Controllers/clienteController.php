@@ -31,17 +31,29 @@ public static function middleware(): array {
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
-            'telefono' => 'nullable|string|max:20',
-            'correo' => 'nullable|unique:clientes',
-            'direccion' => 'nullable|string|max:255',
-        ]);
+{
+    $validated = $request->validate([
+        'nombre' => 'required|string|max:255',
+        'telefono' => 'nullable|string|max:20',
+        'correo' => 'nullable|string|max:255', // Cambié de unique a nullable
+        'direccion' => 'nullable|string|max:255',
+    ]);
 
-        Cliente::create($validated);
-        return redirect()->route('clientes.index');
+    $cliente = Cliente::create($validated);
+
+    // Si es una petición AJAX (desde el modal), devolver JSON
+    if ($request->ajax()) {
+        return response()->json([
+            'success' => true,
+            'cliente' => $cliente,
+            'message' => 'Cliente creado exitosamente'
+        ]);
     }
+
+    // Si es una petición normal, redirigir
+    return redirect()->route('clientes.index')
+        ->with('success', 'Cliente creado exitosamente.');
+}
 
 
     

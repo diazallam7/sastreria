@@ -6,6 +6,7 @@ use App\Http\Controllers\loginController;
 use App\Http\Controllers\logoutController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\AlquilerController;
+use App\Http\Controllers\CierreCajaController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\VentaController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\userController;
 use App\Http\Controllers\DevolucionController;
 use App\Http\Controllers\GastoVarioController;
 use App\Http\Controllers\ProductoVentaController;
+use App\Http\Controllers\ReservaController;
 
 Route::get('/',[homeController::class,'index'])->name('panel');
 route::resource('profiles',profileController::class);
@@ -45,6 +47,9 @@ Route::prefix('alquileres')->name('alquileres.')->group(function () {
     Route::get('/', [AlquilerController::class, 'index'])->name('index'); // Listar alquileres
     Route::get('/crear', [AlquilerController::class, 'create'])->name('create'); // Crear alquiler
     Route::post('/', [AlquilerController::class, 'store'])->name('store'); // Guardar alquiler
+    Route::get('/{alquiler}', [AlquilerController::class, 'show'])->name('show');
+    Route::get('/{alquiler}/edit', [AlquilerController::class, 'edit'])->name('edit');
+    Route::put('/{alquiler}', [AlquilerController::class, 'update'])->name('update');
     Route::delete('/{alquiler}', [AlquilerController::class, 'destroy'])->name('destroy'); // Eliminar alquiler
 
 Route::patch('/alquileres/{alquiler}/devolver', [AlquilerController::class, 'devolver'])->name('alquileres.devolver');
@@ -72,6 +77,22 @@ Route::prefix('productos-venta')->name('productos-venta.')->group(function () {
     Route::put('/{producto}', [ProductoVentaController::class, 'update'])->name('update');
     Route::delete('/{producto}', [ProductoVentaController::class, 'destroy'])->name('destroy');
 });
+
+// Agregar estas rutas al archivo routes/web.php
+
+// Rutas para reservas
+Route::prefix('reservas')->name('reservas.')->group(function () {
+    Route::get('/', [ReservaController::class, 'index'])->name('index');
+    Route::get('/create', [ReservaController::class, 'create'])->name('create');
+    Route::post('/', [ReservaController::class, 'store'])->name('store');
+    Route::get('/{id}', [ReservaController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [ReservaController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [ReservaController::class, 'update'])->name('update');
+    Route::delete('/{id}', [ReservaController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/convertir-alquiler', [ReservaController::class, 'convertirAAlquiler'])->name('convertir-alquiler');
+    Route::patch('/{id}/cancelar', [ReservaController::class, 'cancelar'])->name('cancelar');
+});
+
 Route::prefix('ventas')->name('ventas.')->group(function () {
     Route::get('/', [VentaController::class, 'index'])->name('index');
     Route::get('/crear', [VentaController::class, 'create'])->name('create');
@@ -102,8 +123,21 @@ Route::prefix('devoluciones')->name('devoluciones.')->group(function () {
     Route::post('/procesar/{id}', [DevolucionController::class, 'procesarDevolucion'])->name('procesar');
     Route::get('/comprobante/{id}', [DevolucionController::class, 'comprobante'])->name('comprobante');
     Route::get('/historial', [DevolucionController::class, 'historial'])->name('historial');
-    Route::post('/actualizar-estado/{id}', [DevolucionController::class, 'actualizarEstado'])->name('actualizar-estado');
+    Route::post('/alquileres/{alquiler}/devolver', [AlquilerController::class, 'devolver'])->name('alquileres.devolver');
+    // Cambiar a PATCH
+    Route::patch('/actualizar-estado/{id}', [DevolucionController::class, 'actualizarEstado'])->name('actualizar-estado');
 });
+
+Route::prefix('cierre-caja')->name('cierre-caja.')->group(function () {
+    Route::get('/', [CierreCajaController::class, 'index'])->name('index');
+    Route::post('/consultar', [CierreCajaController::class, 'consultarFecha'])->name('consultar');
+    Route::get('/pdf', [CierreCajaController::class, 'exportarPDF'])->name('pdf');
+    Route::get('/semanal', [CierreCajaController::class, 'resumenSemanal'])->name('semanal');
+    Route::get('/mensual', [CierreCajaController::class, 'resumenMensual'])->name('mensual');
+    Route::get('/cierre-caja/semanal/pdf', [CierreCajaController::class, 'exportarPDFSemanal'])->name('cierre-caja.semanal.pdf');
+Route::get('/cierre-caja/mensual/pdf', [CierreCajaController::class, 'exportarPDFMensual'])->name('cierre-caja.mensual.pdf');
+});
+
 
 
 use App\Http\Controllers\ReporteController;
