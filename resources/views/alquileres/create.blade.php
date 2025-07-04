@@ -92,7 +92,7 @@
                                 @foreach ($clientes as $cliente)
                                     <option value="{{ $cliente->id }}"
                                         {{ old('cliente_id') == $cliente->id ? 'selected' : '' }}>
-                                        {{ $cliente->nombre }} - {{ $cliente->correo ?? 'Sin cedula' }}
+                                        {{ $cliente->nombre }} - {{ $cliente->correo ?? 'Sin cédula' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -294,6 +294,27 @@
                             <div class="col-md-6">
                                 <label for="nueva_direccion" class="form-label">Dirección</label>
                                 <input type="text" class="form-control" id="nueva_direccion" name="direccion">
+                            </div>
+                        </div>
+                        
+                        <!-- Sección de Medidas Básicas -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6 class="text-success mb-3">
+                                    <i class="fas fa-ruler me-2"></i>Medidas Básicas (Opcional)
+                                </h6>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nuevo_medida_saco_basica" class="form-label">Medida Saco</label>
+                                <input type="text" class="form-control" id="nuevo_medida_saco_basica" 
+                                       name="medida_saco_basica" placeholder="Ej: 50-80">
+                                <small class="text-muted">Formato: Talle-Largo</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nuevo_medida_pantalon_basica" class="form-label">Medida Pantalón</label>
+                                <input type="text" class="form-control" id="nuevo_medida_pantalon_basica" 
+                                       name="medida_pantalon_basica" placeholder="Ej: 42-90">
+                                <small class="text-muted">Formato: Cintura-Largo</small>
                             </div>
                         </div>
                     </div>
@@ -577,7 +598,7 @@
                     if (data.success) {
                         // Agregar el nuevo cliente al select
                         const newOption = new Option(
-                            data.cliente.nombre + ' - ' + (data.cliente.telefono || 'Sin teléfono'),
+                            data.cliente.nombre + ' - ' + (data.cliente.correo || 'Sin cédula'),
                             data.cliente.id,
                             true,
                             true

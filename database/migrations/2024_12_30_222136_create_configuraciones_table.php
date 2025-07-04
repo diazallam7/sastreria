@@ -19,7 +19,6 @@ class CreateConfiguracionesTable extends Migration
         // Valores iniciales por defecto
         DB::table('configuraciones')->insert([
             ['nombre' => 'multa', 'descripcion' => 'Multa por retraso (por día)', 'valor' => 10000],
-            ['nombre' => 'impuesto', 'descripcion' => 'Porcentaje de impuesto', 'valor' => 10],
         ]);
     }
 

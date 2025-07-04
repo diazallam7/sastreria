@@ -99,11 +99,6 @@
                     </div>
                     <div class="card-body">
                         <div class="row mb-2">
-                            <div class="col-8">Señas de Reservas:</div>
-                            <div class="col-4 text-end">₲
-                                {{ number_format($movimientos['ingresos']['señas_recibidas'], 0, ',', '.') }}</div>
-                        </div>
-                        <div class="row mb-2">
                             <div class="col-8">Alquileres Iniciados:</div>
                             <div class="col-4 text-end">₲
                                 {{ number_format($movimientos['ingresos']['alquileres'], 0, ',', '.') }}</div>
@@ -142,17 +137,6 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="row mb-2">
-                            <div class="col-8">Devoluciones por Cancelaciones:</div>
-                            <div class="col-4 text-end">₲
-                                {{ number_format($movimientos['egresos']['devoluciones_cancelaciones'], 0, ',', '.') }}
-                            </div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-8">Garantías Devueltas:</div>
-                            <div class="col-4 text-end">₲
-                                {{ number_format($movimientos['egresos']['garantias_devueltas'], 0, ',', '.') }}</div>
-                        </div>
                         <div class="row mb-2">
                             <div class="col-8">Compras:</div>
                             <div class="col-4 text-end">₲
@@ -354,10 +338,16 @@
                                 <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                     <div>
                                         <strong>{{ $compra->nombre_producto }}</strong><br>
-                                        <small class="text-muted">{{ $compra->cantidad_total }} unidades</small>
+                                        <small class="text-muted">
+                                            {{ $compra->cantidad_total_calculada ?? $compra->cantidad_total }} unidades
+                                            @if(isset($compra->precio_total_calculado))
+                                                - Precio unitario: ₲{{ number_format($compra->precio_compra, 0, ',', '.') }}
+                                            @endif
+                                        </small> <br>
+                                        <small class="text-muted">Compra #{{ $compra->id }}</small>
                                     </div>
                                     <div class="text-end">
-                                        <strong>₲ {{ number_format($compra->precio_compra, 0, ',', '.') }}</strong>
+                                        <strong>₲ {{ number_format($compra->precio_total_calculado ?? $compra->precio_compra, 0, ',', '.') }}</strong>
                                     </div>
                                 </div>
                             @endforeach

@@ -10,6 +10,7 @@ use App\Models\TalleStock;
 use App\Models\Alquiler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ReservaController extends Controller
@@ -17,7 +18,7 @@ class ReservaController extends Controller
     public function index()
     {
         $reservas = Reserva::with(['cliente', 'stockItems'])
-                          ->orderBy('fecha_entrega_programada', 'asc')
+                          ->orderBy('id', 'desc')
                           ->get();
         
         return view('reservas.index', compact('reservas'));
@@ -43,7 +44,7 @@ class ReservaController extends Controller
             'prendas.*.stock_id' => 'required|exists:stock_alquiler,id',
             'prendas.*.talle_id' => 'required|exists:talle_stock,id',
             'prendas.*.cantidad' => 'required|integer|min:1',
-            'fecha_reserva' => 'required|date|',
+            'fecha_reserva' => 'required|date',
             'fecha_entrega_programada' => 'required|date|after:fecha_reserva',
             'fecha_devolucion_programada' => 'required|date|after:fecha_reserva',
             'monto_total' => 'required|numeric|min:0',
@@ -126,34 +127,69 @@ class ReservaController extends Controller
 
     public function convertirAAlquiler(Request $request, $id)
     {
-        $request->validate([
-            'fecha_devolucion' => 'required|date|after:today',
+        // Log para debug
+        Log::info("=== INICIO CONVERSIÓN A ALQUILER ===");
+        Log::info("Reserva ID: {$id}");
+        Log::info("Request data: ", $request->all());
+        Log::info("Request method: " . $request->method());
+
+        // CAMBIO IMPORTANTE: Validación corregida
+        $validated = $request->validate([
+            'fecha_entrega' => 'required|date',
+            'fecha_devolucion' => 'required|date|after_or_equal:fecha_entrega',
             'observaciones_entrega' => 'nullable|string|max:1000'
         ]);
+
+        Log::info("Validación pasada exitosamente");
+        Log::info("Fecha de devolución validada: " . $validated['fecha_devolucion']);
 
         DB::beginTransaction();
         
         try {
             $reserva = Reserva::with(['stockItems'])->findOrFail($id);
             
+            Log::info("Reserva encontrada: {$reserva->id}, Estado: {$reserva->estado}");
+            
             if ($reserva->estado !== 'confirmada') {
                 throw new \Exception('Solo se pueden convertir reservas confirmadas');
             }
 
+            // Verificar que la reserva tenga prendas
+            if ($reserva->stockItems->isEmpty()) {
+                throw new \Exception('La reserva no tiene prendas asociadas');
+            }
+
+            Log::info("Creando alquiler...");
+
             // Crear el alquiler
             $alquiler = Alquiler::create([
                 'cliente_id' => $reserva->cliente_id,
-                'fecha_inicio' => Carbon::now(),
-                'fecha_fin' => $request->fecha_devolucion,
+                'fecha_inicio' => $validated['fecha_entrega'], // Usar la fecha de entrega real
+                'fecha_fin' => $validated['fecha_devolucion'], // Usar el dato validado
                 'costo_total' => $reserva->monto_total,
                 'garantia' => $reserva->garantia_total,
                 'estado' => 1 // activo
             ]);
 
+            Log::info("Alquiler creado con ID: {$alquiler->id}");
+
             // Transferir las prendas de reserva a alquiler
             foreach ($reserva->stockItems as $item) {
                 $talleId = $item->pivot->talle_id;
                 $cantidad = $item->pivot->cantidad;
+                
+                Log::info("Procesando prenda: Stock ID {$item->id}, Talle ID {$talleId}, Cantidad {$cantidad}");
+                
+                // Verificar que el talle existe
+                $talle = TalleStock::find($talleId);
+                if (!$talle) {
+                    throw new \Exception("No se encontró el talle con ID {$talleId}");
+                }
+                
+                // Verificar que hay suficiente stock reservado
+                if ($talle->cantidad_reservada < $cantidad) {
+                    throw new \Exception("No hay suficiente stock reservado para el talle {$talle->talle}");
+                }
                 
                 // Asociar al alquiler
                 $alquiler->stockItems()->attach($item->id, [
@@ -161,94 +197,125 @@ class ReservaController extends Controller
                     'cantidad' => $cantidad
                 ]);
                 
+                Log::info("Prenda asociada al alquiler");
+                
                 // Actualizar stock: de reservado a alquilado
-                $talle = TalleStock::findOrFail($talleId);
                 $talle->cantidad_reservada -= $cantidad;
                 $talle->cantidad_alquilada += $cantidad;
                 $talle->save();
+                
+                Log::info("Stock actualizado - Reservado: {$talle->cantidad_reservada}, Alquilado: {$talle->cantidad_alquilada}");
             }
 
             // Actualizar la reserva
+            $observacionesCompletas = $reserva->observaciones;
+            if ($validated['observaciones_entrega']) {
+                $observacionesCompletas .= "\n\nEntrega: " . $validated['observaciones_entrega'];
+            }
+
             $reserva->update([
                 'estado' => 'entregada',
                 'alquiler_id' => $alquiler->id,
-                'observaciones' => $reserva->observaciones . "\n\nEntrega: " . ($request->observaciones_entrega ?? 'Sin observaciones')
+                'observaciones' => $observacionesCompletas
             ]);
+
+            Log::info("Reserva actualizada a estado 'entregada'");
 
             DB::commit();
             
-            return redirect()->route('alquileres.index')
-                ->with('success', 'Reserva convertida a alquiler exitosamente. Monto cobrado: ₲ ' . number_format($reserva->total_a_cobrar, 0, ',', '.'));
+            Log::info("=== CONVERSIÓN EXITOSA ===");
+            
+            return redirect()->route('reservas.index')
+                ->with('success', 'Reserva convertida a alquiler exitosamente. Alquiler #' . $alquiler->id . ' creado.');
                 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("Error en conversión: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
+            
             return back()->with('error', 'Error al convertir la reserva: ' . $e->getMessage());
         }
     }
 
-public function cancelar(Request $request, $id)
-{
-    $request->validate([
-        'seña_devuelta' => 'required|numeric|min:0',
-        'motivo_devolucion' => 'required|string|max:255',
-        'observaciones_cancelacion' => 'nullable|string|max:1000',
-    ]);
+    public function cancelar(Request $request, $id)
+    {
+        Log::info("=== INICIO CANCELACIÓN DE RESERVA ===");
+        Log::info("Reserva ID: {$id}");
+        Log::info("Request data: ", $request->all());
 
-    DB::beginTransaction();
-    
-    try {
-        $reserva = Reserva::with(['stockItems'])->findOrFail($id);
-        
-        if ($reserva->estado === 'entregada') {
-            throw new \Exception('No se puede cancelar una reserva que ya fue entregada');
-        }
-
-        $totalRecibido = $reserva->seña_garantia + $reserva->seña_alquiler;
-        
-        // Validar que no se devuelva más de lo recibido
-        if ($request->seña_devuelta > $totalRecibido) {
-            throw new \Exception('No se puede devolver más dinero del que se recibió');
-        }
-
-        // Liberar el stock reservado
-        foreach ($reserva->stockItems as $item) {
-            $talleStock = TalleStock::find($item->pivot->talle_id);
-            if ($talleStock) {
-                $talleStock->cantidad_disponible += $item->pivot->cantidad;
-                $talleStock->cantidad_reservada -= $item->pivot->cantidad;
-                $talleStock->save();
-            }
-        }
-
-        // Actualizar la reserva con los datos de cancelación
-        $observacionesCompletas = $reserva->observaciones;
-        if ($request->observaciones_cancelacion) {
-            $observacionesCompletas .= "\n\nCancelación: " . $request->observaciones_cancelacion;
-        }
-
-        $reserva->update([
-            'estado' => 'cancelada',
-            'seña_devuelta' => $request->seña_devuelta,
-            'motivo_devolucion' => $request->motivo_devolucion,
-            'observaciones' => $observacionesCompletas
+        $validated = $request->validate([
+            'seña_devuelta' => 'required|numeric|min:0',
+            'motivo_devolucion' => 'required|string|max:255',
+            'observaciones_cancelacion' => 'nullable|string|max:1000',
         ]);
 
-        DB::commit();
+        Log::info("Validación de cancelación pasada");
+
+        DB::beginTransaction();
         
-        $ingresoNeto = $totalRecibido - $request->seña_devuelta;
-        
-        return redirect()->route('reservas.index')
-            ->with('success', 
-                'Reserva cancelada correctamente. ' .
-                'Monto devuelto: ₲ ' . number_format($request->seña_devuelta, 0, ',', '.') . 
-                ' | Ingreso neto: ₲ ' . number_format($ingresoNeto, 0, ',', '.')
-            );
-        
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Error al cancelar la reserva: ' . $e->getMessage());
+        try {
+            $reserva = Reserva::with(['stockItems'])->findOrFail($id);
+            
+            if ($reserva->estado === 'entregada') {
+                throw new \Exception('No se puede cancelar una reserva que ya fue entregada');
+            }
+
+            $totalRecibido = $reserva->seña_garantia + $reserva->seña_alquiler;
+            
+            // Validar que no se devuelva más de lo recibido
+            if ($validated['seña_devuelta'] > $totalRecibido) {
+                throw new \Exception('No se puede devolver más dinero del que se recibió');
+            }
+
+            Log::info("Liberando stock reservado...");
+
+            // Liberar el stock reservado
+            foreach ($reserva->stockItems as $item) {
+                $talleStock = TalleStock::find($item->pivot->talle_id);
+                if ($talleStock) {
+                    $talleStock->cantidad_disponible += $item->pivot->cantidad;
+                    $talleStock->cantidad_reservada -= $item->pivot->cantidad;
+                    $talleStock->save();
+                    
+                    Log::info("Stock liberado para talle {$talleStock->talle}: +{$item->pivot->cantidad} disponible, -{$item->pivot->cantidad} reservado");
+                }
+            }
+
+            // Actualizar la reserva con los datos de cancelación
+            $observacionesCompletas = $reserva->observaciones;
+            if ($validated['observaciones_cancelacion']) {
+                $observacionesCompletas .= "\n\nCancelación: " . $validated['observaciones_cancelacion'];
+            }
+
+            $reserva->update([
+                'estado' => 'cancelada',
+                'seña_devuelta' => $validated['seña_devuelta'],
+                'motivo_devolucion' => $validated['motivo_devolucion'],
+                'observaciones' => $observacionesCompletas
+            ]);
+
+            Log::info("Reserva actualizada a estado 'cancelada'");
+
+            DB::commit();
+            
+            $ingresoNeto = $totalRecibido - $validated['seña_devuelta'];
+            
+            Log::info("=== CANCELACIÓN EXITOSA ===");
+            
+            return redirect()->route('reservas.index')
+                ->with('success', 
+                    'Reserva cancelada correctamente. ' .
+                    'Monto devuelto: ₲ ' . number_format($validated['seña_devuelta'], 0, ',', '.') . 
+                    ' | Ingreso neto: ₲ ' . number_format($ingresoNeto, 0, ',', '.')
+                );
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al cancelar reserva: " . $e->getMessage());
+            return back()->with('error', 'Error al cancelar la reserva: ' . $e->getMessage());
+        }
     }
-}
+
     public function destroy($id)
     {
         DB::beginTransaction();

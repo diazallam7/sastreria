@@ -14,6 +14,7 @@ class Devolucion extends Model
 
     protected $fillable = [
         'alquiler_id',
+        'user_id',
         'fecha_devolucion',
         'retraso',
         'multa',
@@ -41,6 +42,11 @@ class Devolucion extends Model
     public function alquiler()
     {
         return $this->belongsTo(Alquiler::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     // Accessors para formatear montos

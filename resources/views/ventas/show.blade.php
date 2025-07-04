@@ -32,6 +32,12 @@
             font-weight: bold;
             color: #28a745;
         }
+        .user-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+        }
     </style>
 @endpush
 
@@ -66,6 +72,22 @@
                     <strong>Cantidad Total:</strong><br>
                     {{ $venta->detalles->sum('cantidad') }} unidades
                 </div>
+                
+                <!-- Información del Vendedor -->
+                <div class="user-info">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-tie me-2"></i>
+                        <div>
+                            <strong>Vendido por:</strong><br>
+                            @if($venta->user)
+                                <span class="text-light">{{ $venta->user->name }}</span>
+                            @else
+                                <span class="text-muted fst-italic">Usuario no disponible</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
                 <hr class="my-3" style="border-color: rgba(255,255,255,0.3);">
                 <div class="precio-total text-center">
                     ₲ {{ number_format($venta->precio_total, 0, ',', '.') }}
@@ -74,15 +96,9 @@
 
             <!-- Botones de Acción -->
             <div class="d-grid gap-2">
-                <a href="{{ route('ventas.edit', $venta->id) }}" class="btn btn-warning">
-                    <i class="fas fa-edit me-2"></i>Editar Venta
-                </a>
                 <a href="{{ route('ventas.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Volver al Listado
                 </a>
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#eliminarModal">
-                    <i class="fas fa-trash me-2"></i>Eliminar Venta
-                </button>
             </div>
         </div>
 

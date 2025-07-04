@@ -47,7 +47,7 @@
                     <div class="col-md-6">
                         <label for="fecha_compra" class="form-label">Fecha de Compra</label>
                         <input type="date" class="form-control @error('fecha_compra') is-invalid @enderror" 
-                               name="fecha_compra" id="fecha_compra" value="{{ old('fecha_compra') }}" required>
+                               name="fecha_compra" id="fecha_compra" value="{{ old('fecha_compra', date('Y-m-d')) }}" required>
                         @error('fecha_compra')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -57,7 +57,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="precio_compra" class="form-label">Precio de Compra (₲)</label>
-                        <input type="number" step="0.01" class="form-control @error('precio_compra') is-invalid @enderror" 
+                        <input type="text" class="form-control money-input @error('precio_compra') is-invalid @enderror" 
                                name="precio_compra" id="precio_compra" value="{{ old('precio_compra') }}" required>
                         @error('precio_compra')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -65,7 +65,7 @@
                     </div>
                     <div class="col-md-6">
                         <label for="precio_venta" class="form-label">Precio de Venta (₲)</label>
-                        <input type="number" step="0.01" class="form-control @error('precio_venta') is-invalid @enderror" 
+                        <input type="text" class="form-control money-input @error('precio_venta') is-invalid @enderror" 
                                name="precio_venta" id="precio_venta" value="{{ old('precio_venta') }}" required>
                         @error('precio_venta')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -145,6 +145,35 @@
     document.addEventListener('DOMContentLoaded', function() {
         let talleIndex = document.querySelectorAll('.talle-container').length;
         
+        // Funciones para formateo de números
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+        
+        function unformatNumber(str) {
+            return str.replace(/\./g, '');
+        }
+        
+        // Aplicar formateo a campos de dinero
+        function setupMoneyInput(input) {
+            input.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, ''); // Solo números
+                if (value) {
+                    e.target.value = formatNumber(value);
+                }
+            });
+            
+            input.addEventListener('blur', function(e) {
+                let value = unformatNumber(e.target.value);
+                if (value) {
+                    e.target.value = formatNumber(value);
+                }
+            });
+        }
+        
+        // Inicializar campos de dinero existentes
+        document.querySelectorAll('.money-input').forEach(setupMoneyInput);
+        
         // Agregar nuevo talle
         document.getElementById('addTalle').addEventListener('click', function() {
             const container = document.createElement('div');
@@ -186,6 +215,11 @@
         
         // Validar que haya al menos un talle antes de enviar el formulario
         document.getElementById('compraForm').addEventListener('submit', function(e) {
+            // Convertir campos de dinero a números sin formato antes de enviar
+            document.querySelectorAll('.money-input').forEach(input => {
+                input.value = unformatNumber(input.value);
+            });
+            
             const talles = document.querySelectorAll('.talle-container');
             if (talles.length === 0) {
                 e.preventDefault();

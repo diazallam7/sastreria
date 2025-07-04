@@ -5,11 +5,6 @@
 
 @push('css')
     <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
-    <style>
-        .ajuste-positivo { background-color: #d4edda; }
-        .ajuste-negativo { background-color: #f8d7da; }
-        .con-multa { background-color: #f8d7da; }
-    </style>
 @endpush
 
 @section('content')
@@ -29,6 +24,7 @@
             <table id="datatablesSimple" class="table table-striped">
                 <thead>
                     <tr>
+                        <th>ID</th>
                         <th>Fecha</th>
                         <th>Cliente</th>
                         <th>Estado Devolución</th>
@@ -58,71 +54,49 @@
                             $multaAplicada = $devolucion->multa_aplicada_real ?? $devolucion->multa_aplicada ?? 0;
                             $montoDevuelto = $devolucion->monto_devuelto_real ?? $devolucion->monto_devuelto ?? 0;
                             $ajusteMulta = $multaCalculada - $multaAplicada;
-                            
-                            // Determinar clase CSS
-                            $ajusteClase = '';
-                            
-                            // Marcar en rojo si tiene días de retraso O multa aplicada
-                            if ($diasRetraso > 0 || $multaAplicada > 0) {
-                                $ajusteClase = 'con-multa';
-                            }
-                            
-                            // Si además tiene ajuste, aplicar el color específico del ajuste
-                            if ($diasRetraso > 0 && $ajusteMulta > 0) {
-                                $ajusteClase = 'ajuste-positivo';
-                            } elseif ($diasRetraso > 0 && $ajusteMulta < 0) {
-                                $ajusteClase = 'ajuste-negativo';
-                            }
                         @endphp
-                        <tr class="{{ $ajusteClase }}">
+                        <tr>
+                            <td>{{ $devolucion->id }}</td>
                             <td>{{ $devolucion->fecha_devolucion->format('d/m/Y') }}</td>
                             <td>{{ $devolucion->alquiler->cliente->nombre }}</td>
                             <td>
                                 @if($diasAdelanto > 0)
-                                    <span class="badge bg-info">
-                                        <i class="fas fa-clock"></i> {{ $diasAdelanto }} día{{ $diasAdelanto > 1 ? 's' : '' }} antes
-                                    </span>
+                                    {{ $diasAdelanto }} día{{ $diasAdelanto > 1 ? 's' : '' }} antes
                                 @elseif($diasRetraso > 0)
-                                    <span class="badge bg-danger">
-                                        <i class="fas fa-exclamation-triangle"></i> {{ $diasRetraso }} día{{ $diasRetraso > 1 ? 's' : '' }} de retraso
-                                    </span>
+                                    {{ $diasRetraso }} día{{ $diasRetraso > 1 ? 's' : '' }} de retraso
                                 @else
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check"></i> A tiempo
-                                    </span>
+                                    A tiempo
                                 @endif
                             </td>
                             <td>
                                 @if($multaCalculada > 0)
                                     ₲ {{ number_format($multaCalculada, 0, ',', '.') }}
                                 @else
-                                    <span class="text-muted">Sin multa</span>
+                                    Sin multa
                                 @endif
                             </td>
                             <td>
                                 @if($multaAplicada > 0)
                                     ₲ {{ number_format($multaAplicada, 0, ',', '.') }}
                                 @else
-                                    <span class="text-muted">₲ 0</span>
+                                    ₲ 0
                                 @endif
                             </td>
                             <td>₲ {{ number_format($montoDevuelto, 0, ',', '.') }}</td>
                             <td>
                                 @if($diasRetraso > 0 && $ajusteMulta != 0)
-                                    <span class="badge {{ $ajusteMulta > 0 ? 'bg-success' : 'bg-danger' }}">
-                                        {{ $ajusteMulta > 0 ? '+' : '' }}₲ {{ number_format($ajusteMulta, 0, ',', '.') }}
-                                    </span>
+                                    {{ $ajusteMulta > 0 ? '+' : '' }}₲ {{ number_format($ajusteMulta, 0, ',', '.') }}
                                 @else
-                                    <span class="badge bg-secondary">Sin ajuste</span>
+                                    Sin ajuste
                                 @endif
                             </td>
                             <td>
                                 @if($devolucion->motivo_ajuste)
-                                    <small class="text-muted">{{ ucfirst(str_replace('_', ' ', $devolucion->motivo_ajuste)) }}</small>
+                                    {{ ucfirst(str_replace('_', ' ', $devolucion->motivo_ajuste)) }}
                                 @elseif($diasAdelanto > 0)
-                                    <small class="text-info">Devolución anticipada</small>
+                                    Devolución anticipada
                                 @else
-                                    <small class="text-muted">-</small>
+                                    -
                                 @endif
                             </td>
                             <td>
@@ -130,11 +104,6 @@
                                    class="btn btn-sm btn-info" title="Ver comprobante">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                @if($diasAdelanto > 0)
-                                    <span class="badge bg-info ms-1" title="Devolución anticipada">
-                                        <i class="fas fa-star"></i>
-                                    </span>
-                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -143,40 +112,19 @@
         </div>
     </div>
 
-    <!-- Leyenda -->
+    <!-- Información -->
     <div class="card">
         <div class="card-header">
-            <h6><i class="fas fa-info-circle me-2"></i>Leyenda</h6>
+            <h6><i class="fas fa-info-circle me-2"></i>Información</h6>
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-md-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="con-multa" style="width: 20px; height: 20px; margin-right: 10px; border: 1px solid #f5c6cb;"></div>
-                        <span>Devolución con retraso o multa aplicada</span>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="ajuste-positivo" style="width: 20px; height: 20px; margin-right: 10px; border: 1px solid #c3e6cb;"></div>
-                        <span>Ajuste favorable al cliente (multa reducida)</span>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="ajuste-negativo" style="width: 20px; height: 20px; margin-right: 10px; border: 1px solid #f5c6cb;"></div>
-                        <span>Ajuste desfavorable al cliente (multa aumentada)</span>
-                    </div>
-                </div>
-            </div>
-            <hr>
-            <div class="row">
                 <div class="col-12">
-                    <h6>Información adicional:</h6>
                     <ul class="list-unstyled">
-                        <li><i class="fas fa-info-circle text-info me-2"></i><strong>Devolución anticipada:</strong> Cliente devolvió antes de la fecha programada (sin penalización)</li>
-                        <li><i class="fas fa-check text-success me-2"></i><strong>A tiempo:</strong> Cliente devolvió en la fecha exacta programada</li>
-                        <li><i class="fas fa-exclamation-triangle text-danger me-2"></i><strong>Con retraso:</strong> Cliente devolvió después de la fecha programada (multa de ₲10.000 por día)</li>
+                        <li><strong>Devolución anticipada:</strong> Cliente devolvió antes de la fecha programada (sin penalización)</li>
+                        <li><strong>A tiempo:</strong> Cliente devolvió en la fecha exacta programada</li>
+                        <li><strong>Con retraso:</strong> Cliente devolvió después de la fecha programada (multa de ₲10.000 por día)</li>
+                        <li><strong>Ajuste:</strong> Diferencia entre la multa calculada automáticamente y la multa realmente aplicada</li>
                     </ul>
                 </div>
             </div>

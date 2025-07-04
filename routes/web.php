@@ -25,6 +25,7 @@ route::resource('roles',roleController::class);
 
 
 
+// Actualiza esta parte de tus rutas
 Route::prefix('clientes')->name('clientes.')->group(function () {
     Route::get('/', [ClienteController::class, 'index'])->name('index'); // Listar clientes
     Route::get('/crear', [ClienteController::class, 'create'])->name('create'); // Crear cliente
@@ -33,9 +34,10 @@ Route::prefix('clientes')->name('clientes.')->group(function () {
     Route::get('/{cliente}/editar', [ClienteController::class, 'edit'])->name('edit'); // Editar cliente
     Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update'); // Actualizar cliente
     Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->name('destroy'); // Eliminar cliente
-    Route::patch('/clientes/{id}/estado', [ClienteController::class, 'updateEstado'])->name('clientes.updateEstado');
-    Route::get('clientes/{cliente}/historial', [ClienteController::class, 'historial'])->name('clientes.historial');
+    Route::patch('/{id}/estado', [ClienteController::class, 'updateEstado'])->name('updateEstado');
+    Route::get('/{cliente}/historial', [ClienteController::class, 'historial'])->name('historial');
 });
+
 
 
 Route::get('configuraciones', [ConfiguracionController::class, 'index'])->name('configuraciones.index');
@@ -89,7 +91,7 @@ Route::prefix('reservas')->name('reservas.')->group(function () {
     Route::get('/{id}/edit', [ReservaController::class, 'edit'])->name('edit');
     Route::put('/{id}', [ReservaController::class, 'update'])->name('update');
     Route::delete('/{id}', [ReservaController::class, 'destroy'])->name('destroy');
-    Route::post('/{id}/convertir-alquiler', [ReservaController::class, 'convertirAAlquiler'])->name('convertir-alquiler');
+    Route::match(['get', 'post'], '/{id}/convertir-alquiler', [ReservaController::class, 'convertirAAlquiler'])->name('convertir-alquiler');
     Route::patch('/{id}/cancelar', [ReservaController::class, 'cancelar'])->name('cancelar');
 });
 

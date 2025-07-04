@@ -198,16 +198,15 @@
                     @php
                         $totalIngresos = $totalesSemana['ingresos'];
                         $categorias = [
-                            'señas_recibidas' => ['nombre' => 'Señas de Reservas', 'total' => 0],
                             'alquileres' => ['nombre' => 'Alquileres', 'total' => 0],
                             'multas_retraso' => ['nombre' => 'Multas', 'total' => 0],
                             'ventas' => ['nombre' => 'Ventas', 'total' => 0],
-                            'ingresos_cancelaciones' => ['nombre' => 'Cancelaciones', 'total' => 0]
+                            'ingresos_cancelaciones' => ['nombre' => 'Ingresos por Cancelaciones', 'total' => 0]
                         ];
                         
                         foreach ($resumenSemanal as $dia) {
                             foreach ($categorias as $key => $value) {
-                                $categorias[$key]['total'] += $dia['desglose_ingresos'][$key];
+                                $categorias[$key]['total'] += $dia['desglose_ingresos'][$key] ?? 0;
                             }
                         }
                     @endphp
@@ -216,6 +215,7 @@
                         @php
                             $porcentaje = $totalIngresos > 0 ? ($categoria['total'] / $totalIngresos) * 100 : 0;
                         @endphp
+                        @if($categoria['total'] > 0)
                         <div class="mb-2">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>{{ $categoria['nombre'] }}</span>
@@ -226,6 +226,7 @@
                                      aria-valuenow="{{ $porcentaje }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         </div>
+                        @endif
                     @endforeach
                 </div>
             </div>

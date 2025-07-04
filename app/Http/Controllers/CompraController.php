@@ -14,15 +14,16 @@ class CompraController extends Controller implements HasMiddleware
 {
 
     public static function middleware(): array {
-
-       return [
-        
-          new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-role|crear-role|editar-role|eliminar-role'),only:['index']),
-         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('crear-role'), only:['create','store']),
-         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-role'),only:['edit','update']),
-         new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('eliminar-role'), only:['destroy']),
+        return [
+            // Corregir los permisos para usar permisos específicos de compra
+            new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-compra|crear-compra|editar-compra|eliminar-compra'),only:['index']),
+            new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('crear-compra'), only:['create','store']),
+            new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-compra'),only:['edit','update']),
+            new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('eliminar-compra'), only:['destroy']),
+            new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('editar-compra'), only:['activarParaVenta','desactivarParaVenta']),
         ]; 
-     }
+    }
+
     public function index()
     {
         $compras = Compra::with('talles')->get();

@@ -48,6 +48,7 @@
             <table id="datatablesSimple" class="table table-striped">
                 <thead>
                     <tr>
+                        <th>ID</th>
                         <th>Producto</th>
                         <th>Fecha de Compra</th>
                         <th>Precio Compra</th>
@@ -60,6 +61,7 @@
                 <tbody>
                     @foreach ($compras as $compra)
                         <tr>
+                            <td>{{ $compra->id }}</td>
                             <td>{{ $compra->nombre_producto }}</td>
                             <td>{{ $compra->fecha_compra->format('d/m/Y') }}</td>
                             <td>₲ {{ number_format($compra->precio_compra, 0, ',', '.') }}</td>

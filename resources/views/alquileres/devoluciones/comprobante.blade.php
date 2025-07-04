@@ -32,6 +32,25 @@
                         </div>
                     </div>
 
+                    <!-- Información del usuario que procesó la devolución -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-user me-2"></i>Información de Procesamiento</h6>
+                                <p class="mb-0">
+                                    <strong>Procesado por:</strong> 
+                                    @if($devolucion->user)
+                                        {{ $devolucion->user->name }}
+                                    @else
+                                        <span class="text-muted">Usuario no disponible</span>
+                                    @endif
+                                    <br>
+                                    <strong>Fecha y hora:</strong> {{ $devolucion->created_at->format('d/m/Y H:i:s') }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Detalle financiero -->
                     <div class="table-responsive">
                         <table class="table table-bordered">
@@ -69,7 +88,7 @@
                     </div>
 
                     @if($devolucion->motivo_ajuste)
-                        <div class="alert alert-info">
+                        <div class="alert alert-warning">
                             <h6><i class="fas fa-info-circle me-2"></i>Motivo del Ajuste</h6>
                             <p class="mb-0">
                                 <strong>{{ ucfirst(str_replace('_', ' ', $devolucion->motivo_ajuste)) }}</strong>
@@ -91,9 +110,6 @@
                         <a href="{{ route('devoluciones.index') }}" class="btn btn-primary me-2">
                             <i class="fas fa-arrow-left me-2"></i>Volver a Devoluciones
                         </a>
-                        <button onclick="window.print()" class="btn btn-secondary">
-                            <i class="fas fa-print me-2"></i>Imprimir
-                        </button>
                     </div>
                 </div>
             </div>

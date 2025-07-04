@@ -62,6 +62,11 @@
         .btn-remove:hover {
             color: #a71e2a;
         }
+        .alert-info-productos {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #1976d2;
+        }
     </style>
 @endpush
 
@@ -119,14 +124,30 @@
                     <div class="col-12">
                         <label class="form-label">Productos</label>
                         <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#productosCompraModal">
-                                <i class="fas fa-shopping-cart me-2"></i>Agregar Producto de Compra
-                                <span class="badge bg-secondary ms-2">{{ $compras->sum(function($compra) { return $compra->talles->sum('cantidad_disponible'); }) }}</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#productosManualModal">
-                                <i class="fas fa-plus-circle me-2"></i>Agregar Producto Manual
-                                <span class="badge bg-secondary ms-2">{{ $productosVenta->sum(function($producto) { return $producto->talles->sum('cantidad_disponible'); }) }}</span>
-                            </button>
+                            @if($compras->count() > 0)
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#productosCompraModal">
+                                    <i class="fas fa-shopping-cart me-2"></i>Agregar Producto de Compra
+                                    <span class="badge bg-secondary ms-2">{{ $compras->sum(function($compra) { return $compra->talles->sum('cantidad_disponible'); }) }}</span>
+                                </button>
+                            @else
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No hay productos de compra activos para venta. 
+                                    <a href="{{ route('compras.index') }}" class="alert-link">Activar productos aquí</a>
+                                </div>
+                            @endif
+                            
+                            @if($productosVenta->count() > 0)
+                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#productosManualModal">
+                                    <i class="fas fa-plus-circle me-2"></i>Agregar Producto Manual
+                                    <span class="badge bg-secondary ms-2">{{ $productosVenta->sum(function($producto) { return $producto->talles->sum('cantidad_disponible'); }) }}</span>
+                                </button>
+                            @else
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No hay productos manuales activos para venta.
+                                </div>
+                            @endif
                         </div>
                         
                         <!-- Carrito de productos -->
@@ -142,8 +163,9 @@
                 <!-- Precio total -->
                 <div class="row mb-4">
                     <div class="col-md-6 ms-auto">
-                        <label for="precio_total" class="form-label">Precio Total (₲)</label>
-                        <input type="number" class="form-control @error('precio_total') is-invalid @enderror" id="precio_total" name="precio_total" value="{{ old('precio_total', 0) }}" step="0.01" min="0" required readonly>
+                        <label for="precio_total_display" class="form-label">Precio Total (₲)</label>
+                        <input type="text" class="form-control @error('precio_total') is-invalid @enderror" id="precio_total_display" placeholder="0" autocomplete="off">
+                        <input type="hidden" id="precio_total" name="precio_total" value="{{ old('precio_total', 0) }}">
                         @error('precio_total')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -164,12 +186,14 @@
 </div>
 
 <!-- Modal para productos de compra -->
+@if($compras->count() > 0)
 <div class="modal fade" id="productosCompraModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-shopping-cart me-2"></i>Seleccionar Producto de Compra
+                    <span class="badge bg-success ms-2">Solo productos activos</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -195,37 +219,40 @@
                         </thead>
                         <tbody id="tablaCompraBody">
                             @foreach ($compras as $compra)
-                                @php
-                                    $stockTotal = $compra->talles->sum('cantidad_disponible');
-                                    $tallesDisponibles = $compra->talles->where('cantidad_disponible', '>', 0);
-                                @endphp
-                                <tr class="producto-row {{ $stockTotal == 0 ? 'disabled' : '' }}" 
-                                    data-tipo="compra" 
-                                    data-id="{{ $compra->id }}" 
-                                    data-nombre="{{ $compra->nombre_producto }}" 
-                                    data-precio="{{ $compra->precio_venta }}"
-                                    data-stock="{{ $stockTotal }}">
-                                    <td>
-                                        <strong>{{ $compra->nombre_producto }}</strong>
-                                        @if($stockTotal == 0)
-                                            <span class="badge bg-danger ms-2">Sin Stock</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-primary fw-bold">₲ {{ number_format($compra->precio_venta, 0, ',', '.') }}</td>
-                                    <td>
-                                        @foreach($tallesDisponibles as $talle)
-                                            <span class="badge bg-secondary me-1">{{ $talle->talle }}</span>
-                                        @endforeach
-                                        @if($tallesDisponibles->count() == 0)
-                                            <span class="text-muted">Sin talles disponibles</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="badge {{ $stockTotal > 0 ? 'bg-success' : 'bg-danger' }}">
-                                            {{ $stockTotal }}
-                                        </span>
-                                    </td>
-                                </tr>
+                                @if($compra->activo_para_venta)
+                                    @php
+                                        $stockTotal = $compra->talles->sum('cantidad_disponible');
+                                        $tallesDisponibles = $compra->talles->where('cantidad_disponible', '>', 0);
+                                    @endphp
+                                    <tr class="producto-row {{ $stockTotal == 0 ? 'disabled' : '' }}" 
+                                        data-tipo="compra" 
+                                        data-id="{{ $compra->id }}" 
+                                        data-nombre="{{ $compra->nombre_producto }}" 
+                                        data-precio="{{ $compra->precio_venta }}"
+                                        data-stock="{{ $stockTotal }}">
+                                        <td>
+                                            <strong>{{ $compra->nombre_producto }}</strong>
+                                            <span class="badge bg-success ms-2">Activo</span>
+                                            @if($stockTotal == 0)
+                                                <span class="badge bg-danger ms-2">Sin Stock</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-primary fw-bold">₲ {{ number_format($compra->precio_venta, 0, ',', '.') }}</td>
+                                        <td>
+                                            @foreach($tallesDisponibles as $talle)
+                                                <span class="badge bg-secondary me-1">{{ $talle->talle }}</span>
+                                            @endforeach
+                                            @if($tallesDisponibles->count() == 0)
+                                                <span class="text-muted">Sin talles disponibles</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ $stockTotal > 0 ? 'bg-success' : 'bg-danger' }}">
+                                                {{ $stockTotal }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
                         </tbody>
                     </table>
@@ -255,14 +282,17 @@
         </div>
     </div>
 </div>
+@endif
 
 <!-- Modal para productos manuales -->
+@if($productosVenta->count() > 0)
 <div class="modal fade" id="productosManualModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-plus-circle me-2"></i>Seleccionar Producto Manual
+                    <span class="badge bg-success ms-2">Solo productos activos</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -300,6 +330,7 @@
                                     data-stock="{{ $stockTotal }}">
                                     <td>
                                         <strong>{{ $producto->nombre_producto }}</strong>
+                                        <span class="badge bg-success ms-2">Activo</span>
                                         @if($stockTotal == 0)
                                             <span class="badge bg-danger ms-2">Sin Stock</span>
                                         @endif
@@ -348,6 +379,7 @@
         </div>
     </div>
 </div>
+@endif
 
 @endsection
 
@@ -358,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let carrito = [];
     let carritoIndex = 0;
     
-    // Datos de productos
+    // Datos de productos (solo productos activos)
     const productosCompra = [
         @foreach($compras as $compra)
         {
@@ -397,7 +429,16 @@ document.addEventListener('DOMContentLoaded', function() {
         @endforeach
     ];
 
-    console.log('Productos cargados:', { compra: productosCompra.length, manual: productosManual.length });
+    console.log('Productos activos cargados:', { compra: productosCompra.length, manual: productosManual.length });
+
+    // Inicializar formato del precio total al cargar la página
+    const precioTotalInicial = {{ old('precio_total', 0) }};
+    if (precioTotalInicial > 0) {
+        document.getElementById('precio_total_display').value = formatearNumero(precioTotalInicial);
+    }
+
+    // Resto del código JavaScript permanece igual...
+    // [El resto del código JavaScript del archivo original]
 
     // Función para seleccionar producto
     function seleccionarProducto(row) {
@@ -407,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const precio = parseFloat(row.getAttribute('data-precio'));
         const stock = parseInt(row.getAttribute('data-stock'));
 
-        console.log('Seleccionando producto:', { tipo, id, nombre, precio, stock });
+        console.log('Seleccionando producto activo:', { tipo, id, nombre, precio, stock });
 
         if (stock === 0) return;
 
@@ -607,7 +648,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para actualizar el total
     function actualizarTotal() {
         const total = carrito.reduce((sum, item) => sum + item.subtotal, 0);
-        document.getElementById('precio_total').value = total.toFixed(2);
+        document.getElementById('precio_total').value = total;
+        document.getElementById('precio_total_display').value = formatearNumero(total);
         console.log('Total actualizado:', total);
     }
 
@@ -699,6 +741,46 @@ document.addEventListener('DOMContentLoaded', function() {
         // Deshabilitar botón para evitar doble envío
         document.getElementById('btnSubmit').disabled = true;
         document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
+    });
+
+    // Función para formatear números con separadores de miles
+    function formatearNumero(numero) {
+        if (!numero || numero === 0) return '0';
+        return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    // Función para limpiar formato y obtener solo números
+    function limpiarNumero(numeroFormateado) {
+        if (!numeroFormateado) return 0;
+        return parseInt(numeroFormateado.toString().replace(/\./g, '')) || 0;
+    }
+
+    // Event listener para el campo de precio total editable
+    document.getElementById('precio_total_display').addEventListener('input', function() {
+        // Remover caracteres no numéricos excepto puntos
+        let valor = this.value.replace(/[^\d.]/g, '');
+        
+        // Remover puntos existentes para reformatear
+        let numeroLimpio = valor.replace(/\./g, '');
+        
+        // Formatear con puntos como separadores de miles
+        let numeroFormateado = formatearNumero(numeroLimpio);
+        
+        // Actualizar el campo visible
+        this.value = numeroFormateado;
+        
+        // Actualizar el campo oculto con el valor sin formato
+        document.getElementById('precio_total').value = numeroLimpio;
+        
+        console.log('Precio total editado:', { formateado: numeroFormateado, limpio: numeroLimpio });
+    });
+
+    // Event listener para formatear al perder el foco
+    document.getElementById('precio_total_display').addEventListener('blur', function() {
+        if (!this.value || this.value === '0') {
+            this.value = '0';
+            document.getElementById('precio_total').value = 0;
+        }
     });
 });
 </script>

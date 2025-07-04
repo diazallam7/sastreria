@@ -206,16 +206,15 @@
                         @php
                             $totalIngresos = $totalesMes['ingresos'];
                             $categorias = [
-                                'señas_recibidas' => ['nombre' => 'Señas de Reservas', 'total' => 0],
                                 'alquileres' => ['nombre' => 'Alquileres', 'total' => 0],
                                 'multas_retraso' => ['nombre' => 'Multas', 'total' => 0],
                                 'ventas' => ['nombre' => 'Ventas', 'total' => 0],
-                                'ingresos_cancelaciones' => ['nombre' => 'Cancelaciones', 'total' => 0],
+                                'ingresos_cancelaciones' => ['nombre' => 'Ingresos por Cancelaciones', 'total' => 0],
                             ];
 
                             foreach ($movimientosMensuales as $semana) {
                                 foreach ($categorias as $key => $value) {
-                                    $categorias[$key]['total'] += $semana['desglose']['ingresos'][$key];
+                                    $categorias[$key]['total'] += $semana['desglose']['ingresos'][$key] ?? 0;
                                 }
                             }
                         @endphp
@@ -224,6 +223,7 @@
                             @php
                                 $porcentaje = $totalIngresos > 0 ? ($categoria['total'] / $totalIngresos) * 100 : 0;
                             @endphp
+                            @if($categoria['total'] > 0)
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span>{{ $categoria['nombre'] }}</span>
@@ -235,6 +235,7 @@
                                         aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
@@ -263,33 +264,27 @@
                                         <table class="table table-sm">
                                             <tbody>
                                                 <tr>
-                                                    <td>Señas de Reservas:</td>
-                                                    <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['ingresos']['señas_recibidas'], 0, ',', '.') }}
-                                                    </td>
-                                                </tr>
-                                                <tr>
                                                     <td>Alquileres:</td>
                                                     <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['ingresos']['alquileres'], 0, ',', '.') }}
+                                                        {{ number_format($semana['desglose']['ingresos']['alquileres'] ?? 0, 0, ',', '.') }}
                                                     </td>
                                                 </tr>
                                                 <tr>
                                                     <td>Multas por Retraso:</td>
                                                     <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['ingresos']['multas_retraso'], 0, ',', '.') }}
+                                                        {{ number_format($semana['desglose']['ingresos']['multas_retraso'] ?? 0, 0, ',', '.') }}
                                                     </td>
                                                 </tr>
                                                 <tr>
                                                     <td>Ventas:</td>
                                                     <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['ingresos']['ventas'], 0, ',', '.') }}
+                                                        {{ number_format($semana['desglose']['ingresos']['ventas'] ?? 0, 0, ',', '.') }}
                                                     </td>
                                                 </tr>
                                                 <tr>
                                                     <td>Ingresos por Cancelaciones:</td>
                                                     <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['ingresos']['ingresos_cancelaciones'], 0, ',', '.') }}
+                                                        {{ number_format($semana['desglose']['ingresos']['ingresos_cancelaciones'] ?? 0, 0, ',', '.') }}
                                                     </td>
                                                 </tr>
                                                 <tr class="table-success">
@@ -307,27 +302,15 @@
                                         <table class="table table-sm">
                                             <tbody>
                                                 <tr>
-                                                    <td>Devoluciones por Cancelaciones:</td>
-                                                    <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['egresos']['devoluciones_cancelaciones'], 0, ',', '.') }}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Garantías Devueltas:</td>
-                                                    <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['egresos']['garantias_devueltas'], 0, ',', '.') }}
-                                                    </td>
-                                                </tr>
-                                                <tr>
                                                     <td>Compras:</td>
                                                     <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['egresos']['compras'], 0, ',', '.') }}
+                                                        {{ number_format($semana['desglose']['egresos']['compras'] ?? 0, 0, ',', '.') }}
                                                     </td>
                                                 </tr>
                                                 <tr>
                                                     <td>Gastos Varios:</td>
                                                     <td class="text-end">₲
-                                                        {{ number_format($semana['desglose']['egresos']['gastos_varios'], 0, ',', '.') }}
+                                                        {{ number_format($semana['desglose']['egresos']['gastos_varios'] ?? 0, 0, ',', '.') }}
                                                     </td>
                                                 </tr>
                                                 <tr class="table-danger">

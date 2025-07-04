@@ -98,6 +98,7 @@ class DevolucionController extends Controller
             // Crear registro de devolución con valores calculados Y reales
             $devolucion = Devolucion::create([
                 'alquiler_id'         => $alquiler->id,
+                'user_id'             => auth()->id(), // Agregar esta línea
                 'fecha_devolucion'    => $fechaDevolucion,
                 'retraso'             => $diasRetraso > 0 ? 1 : 0,
                 'multa'               => $request->multa_calculada, // Multa calculada automáticamente
@@ -112,7 +113,7 @@ class DevolucionController extends Controller
                 'motivo_ajuste'       => $request->motivo_ajuste,
             ]);
 
-                                                // Actualizar estado del alquiler
+            // Actualizar estado del alquiler
             $alquiler->update(['estado' => 2]); // finalizado
 
             // Actualizar el stock de las prendas
@@ -176,23 +177,28 @@ class DevolucionController extends Controller
                 $garantiaOriginal = $alquiler->garantia ?? 0;
                 $montoDevolver    = max(0, $garantiaOriginal - $multaTotal);
 
-                // Crear registro de devolución
+                // CORREGIDO: Crear registro de devolución SIEMPRE
                 $devolucion = Devolucion::create([
-                    'alquiler_id'       => $alquiler->id,
-                    'fecha_devolucion'  => $fechaDevolucion,
-                    'retraso'           => $diasRetraso > 0 ? 1 : 0,
-                    'multa'             => $multaTotal,
-                    'garantia_original' => $garantiaOriginal,
-                    'multa_aplicada'    => $multaTotal,
-                    'monto_devuelto'    => $montoDevolver,
-                    'dias_retraso'      => $diasRetraso,
-                    'observaciones'     => 'Devolución procesada automáticamente',
+                    'alquiler_id'         => $alquiler->id,
+                    'user_id'             => auth()->id(), // Agregar esta línea
+                    'fecha_devolucion'    => $fechaDevolucion,
+                    'retraso'             => $diasRetraso > 0 ? 1 : 0,
+                    'multa'               => $multaTotal,
+                    'multa_calculada'     => $multaTotal,
+                    'multa_aplicada_real' => $multaTotal,
+                    'garantia_original'   => $garantiaOriginal,
+                    'multa_aplicada'      => $multaTotal,
+                    'monto_devuelto'      => $montoDevolver,
+                    'monto_devuelto_real' => $montoDevolver,
+                    'dias_retraso'        => $diasRetraso,
+                    'observaciones'       => 'Devolución procesada automáticamente desde el listado',
+                    'motivo_ajuste'       => null,
                 ]);
 
                 // Actualizar estado del alquiler
                 $alquiler->update(['estado' => 2]);
 
-                // IMPORTANTE: Actualizar el stock de las prendas
+                // Actualizar el stock de las prendas
                 foreach ($alquiler->stockItems as $stockItem) {
                     // Cambiar estado a disponible
                     $stockItem->update(['estado' => 1]);
@@ -223,20 +229,22 @@ class DevolucionController extends Controller
                         }
                     }
                 }
+
+                DB::commit();
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success'        => true,
+                        'message'        => 'Devolución procesada correctamente',
+                        'monto_devolver' => $montoDevolver,
+                        'multa_aplicada' => $multaTotal,
+                        'devolucion_id'  => $devolucion->id,
+                    ]);
+                }
+
+                return redirect()->route('devoluciones.index')
+                    ->with('success', 'Devolución procesada correctamente. Monto a devolver: ₲ ' . number_format($montoDevolver, 0, ',', '.'));
             }
-
-            DB::commit();
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success'        => true,
-                    'message'        => 'Devolución procesada correctamente',
-                    'monto_devolver' => $montoDevolver ?? 0,
-                ]);
-            }
-
-            return redirect()->route('devoluciones.index')
-                ->with('success', 'Devolución procesada correctamente. Monto a devolver: ₲ ' . number_format($montoDevolver ?? 0, 0, ',', '.'));
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -251,9 +259,10 @@ class DevolucionController extends Controller
             return back()->with('error', 'Error al procesar la devolución: ' . $e->getMessage());
         }
     }
+
     public function comprobante($id)
     {
-        $devolucion = Devolucion::with(['alquiler.cliente', 'alquiler.stockItems'])->findOrFail($id);
+        $devolucion = Devolucion::with(['alquiler.cliente', 'alquiler.stockItems', 'user'])->findOrFail($id);
 
         return view('alquileres.devoluciones.comprobante', compact('devolucion'));
     }
@@ -266,7 +275,4 @@ class DevolucionController extends Controller
 
         return view('alquileres.devoluciones.historial', compact('devoluciones'));
     }
-
-    // Método actualizado para el proceso simple
-
 }

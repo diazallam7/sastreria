@@ -7,6 +7,8 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+<link href="https://npmcdn.com/flatpickr/dist/themes/material_blue.css" rel="stylesheet">
 <style>
     .prenda-card {
         border: 1px solid #dee2e6;
@@ -97,7 +99,7 @@
                             <option value="" selected disabled>Seleccione un cliente</option>
                             @foreach ($clientes as $cliente)
                                 <option value="{{ $cliente->id }}" {{ old('cliente_id') == $cliente->id ? 'selected' : '' }}>
-                                    {{ $cliente->nombre }} - {{ $cliente->correo ?? 'Sin cedula' }}
+                                    {{ $cliente->nombre }} - {{ $cliente->telefono ?? 'Sin teléfono' }}
                                 </option>
                             @endforeach
                         </select>
@@ -132,24 +134,27 @@
                 <div class="row mb-4">
                     <div class="col-md-4">
                         <label for="fecha_reserva" class="form-label">Fecha de reserva</label>
-                        <input type="date" class="form-control @error('fecha_reserva') is-invalid @enderror" 
-                               id="fecha_reserva" name="fecha_reserva" value="{{ old('fecha_reserva') }}" required>
+                        <input type="text" class="form-control @error('fecha_reserva') is-invalid @enderror" 
+                               id="fecha_reserva" name="fecha_reserva" value="{{ old('fecha_reserva') }}" 
+                               placeholder="Seleccione la fecha de reserva" required readonly>
                         @error('fecha_reserva')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-md-4">
                         <label for="fecha_entrega_programada" class="form-label">Fecha de Entrega</label>
-                        <input type="date" class="form-control @error('fecha_entrega_programada') is-invalid @enderror" 
-                               id="fecha_entrega_programada" name="fecha_entrega_programada" value="{{ old('fecha_entrega_programada') }}" required>
+                        <input type="text" class="form-control @error('fecha_entrega_programada') is-invalid @enderror" 
+                               id="fecha_entrega_programada" name="fecha_entrega_programada" value="{{ old('fecha_entrega_programada') }}" 
+                               placeholder="Seleccione la fecha de entrega" required readonly>
                         @error('fecha_entrega_programada')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-md-4">
                         <label for="fecha_devolucion_programada" class="form-label">Fecha de Devolución</label>
-                        <input type="date" class="form-control @error('fecha_devolucion_programada') is-invalid @enderror" 
-                               id="fecha_devolucion_programada" name="fecha_devolucion_programada" value="{{ old('fecha_devolucion_programada') }}" required>
+                        <input type="text" class="form-control @error('fecha_devolucion_programada') is-invalid @enderror" 
+                               id="fecha_devolucion_programada" name="fecha_devolucion_programada" value="{{ old('fecha_devolucion_programada') }}" 
+                               placeholder="Seleccione la fecha de devolución" required readonly>
                         @error('fecha_devolucion_programada')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -158,38 +163,38 @@
 
                 <div class="row mb-4">
                     <div class="col-md-3">
-                        <label for="monto_total" class="form-label">Monto Total del Alquiler (₲)</label>
-                        <input type="number" class="form-control @error('monto_total') is-invalid @enderror" 
-                               id="monto_total" name="monto_total" value="{{ old('monto_total', 0) }}" 
-                               step="1000" min="0" readonly>
+                        <label for="monto_total_display" class="form-label">Monto Total del Alquiler (₲)</label>
+                        <input type="text" class="form-control @error('monto_total') is-invalid @enderror" 
+                               id="monto_total_display" placeholder="0" autocomplete="off">
+                        <input type="hidden" id="monto_total" name="monto_total" value="{{ old('monto_total', 0) }}">
                         <small class="text-muted">Se calcula automáticamente según las prendas seleccionadas</small>
                         @error('monto_total')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-md-3">
-                        <label for="garantia_total" class="form-label">Garantía Total (₲)</label>
-                        <input type="number" class="form-control @error('garantia_total') is-invalid @enderror" 
-                               id="garantia_total" name="garantia_total" value="{{ old('garantia_total', 0) }}" 
-                               step="1000" min="0" required>
+                        <label for="garantia_total_display" class="form-label">Garantía Total (₲)</label>
+                        <input type="text" class="form-control @error('garantia_total') is-invalid @enderror" 
+                               id="garantia_total_display" placeholder="0" autocomplete="off" required>
+                        <input type="hidden" id="garantia_total" name="garantia_total" value="{{ old('garantia_total', 0) }}">
                         @error('garantia_total')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-md-3">
-                        <label for="seña_garantia" class="form-label">Seña de Garantía (₲) *</label>
-                        <input type="number" class="form-control @error('seña_garantia') is-invalid @enderror" 
-                               id="seña_garantia" name="seña_garantia" value="{{ old('seña_garantia', 0) }}" 
-                               step="1000" min="0" required>
+                        <label for="seña_garantia_display" class="form-label">Seña de Garantía (₲) *</label>
+                        <input type="text" class="form-control @error('seña_garantia') is-invalid @enderror" 
+                               id="seña_garantia_display" placeholder="0" autocomplete="off" required>
+                        <input type="hidden" id="seña_garantia" name="seña_garantia" value="{{ old('seña_garantia', 0) }}">
                         @error('seña_garantia')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-md-3">
-                        <label for="seña_alquiler" class="form-label">Seña de Alquiler (₲)</label>
-                        <input type="number" class="form-control @error('seña_alquiler') is-invalid @enderror" 
-                               id="seña_alquiler" name="seña_alquiler" value="{{ old('seña_alquiler', 0) }}" 
-                               step="1000" min="0">
+                        <label for="seña_alquiler_display" class="form-label">Seña de Alquiler (₲)</label>
+                        <input type="text" class="form-control @error('seña_alquiler') is-invalid @enderror" 
+                               id="seña_alquiler_display" placeholder="0" autocomplete="off">
+                        <input type="hidden" id="seña_alquiler" name="seña_alquiler" value="{{ old('seña_alquiler', 0) }}">
                         @error('seña_alquiler')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -348,6 +353,27 @@
                             <input type="text" class="form-control" id="nueva_direccion" name="direccion">
                         </div>
                     </div>
+                    
+                    <!-- Sección de Medidas Básicas -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="text-success mb-3">
+                                <i class="fas fa-ruler me-2"></i>Medidas Básicas (Opcional)
+                            </h6>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo_medida_saco_basica" class="form-label">Medida Saco</label>
+                            <input type="text" class="form-control" id="nuevo_medida_saco_basica" 
+                                   name="medida_saco_basica" placeholder="Ej: 50-80">
+                            <small class="text-muted">Formato: Talle-Largo</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="nuevo_medida_pantalon_basica" class="form-label">Medida Pantalón</label>
+                            <input type="text" class="form-control" id="nuevo_medida_pantalon_basica" 
+                                   name="medida_pantalon_basica" placeholder="Ej: 42-90">
+                            <small class="text-muted">Formato: Cintura-Largo</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -364,9 +390,64 @@
 <!-- Asegurar que jQuery esté cargado ANTES que otros scripts -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Funciones para formatear números
+    function formatearNumero(numero) {
+        if (!numero || numero === 0) return '0';
+        return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function limpiarNumero(numeroFormateado) {
+        if (!numeroFormateado) return 0;
+        return parseInt(numeroFormateado.toString().replace(/\./g, '')) || 0;
+    }
+
+    // Configurar campos de precio con formato
+    function configurarCampoNumerico(displayId, hiddenId) {
+        const displayField = document.getElementById(displayId);
+        const hiddenField = document.getElementById(hiddenId);
+        
+        if (!displayField || !hiddenField) return;
+
+        // Inicializar con valor existente
+        const valorInicial = hiddenField.value || 0;
+        if (valorInicial > 0) {
+            displayField.value = formatearNumero(valorInicial);
+        }
+
+        // Event listener para formatear mientras se escribe
+        displayField.addEventListener('input', function() {
+            let valor = this.value.replace(/[^\d.]/g, '');
+            let numeroLimpio = valor.replace(/\./g, '');
+            let numeroFormateado = formatearNumero(numeroLimpio);
+            
+            this.value = numeroFormateado;
+            hiddenField.value = numeroLimpio;
+            
+            // Recalcular resumen si es necesario
+            calcularResumen();
+        });
+
+        // Event listener para formatear al perder el foco
+        displayField.addEventListener('blur', function() {
+            if (!this.value || this.value === '0') {
+                this.value = '0';
+                hiddenField.value = 0;
+                calcularResumen();
+            }
+        });
+    }
+
+    // Configurar todos los campos numéricos
+    configurarCampoNumerico('monto_total_display', 'monto_total');
+    configurarCampoNumerico('garantia_total_display', 'garantia_total');
+    configurarCampoNumerico('seña_garantia_display', 'seña_garantia');
+    configurarCampoNumerico('seña_alquiler_display', 'seña_alquiler');
+
     // Inicializar jQuery y Select2
     if (typeof $ !== 'undefined') {
         console.log('jQuery cargado correctamente');
@@ -384,6 +465,69 @@ document.addEventListener('DOMContentLoaded', function() {
                     return "Buscando...";
                 }
             }
+        });
+        
+        // Configuración de flatpickr para las fechas
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Fecha de reserva (puede ser hoy o en el futuro)
+        const fechaReservaFp = flatpickr("#fecha_reserva", {
+            enableTime: false,
+            dateFormat: "Y-m-d",
+            locale: "es",
+            minDate: "today",
+            defaultDate: "today",
+            allowInput: false,
+            clickOpens: true,
+            onChange: function(selectedDates, dateStr, instance) {
+                // Actualizar fecha mínima de entrega cuando cambie la fecha de reserva
+                if (selectedDates.length > 0) {
+                    const selectedDate = new Date(selectedDates[0]);
+                    fechaEntregaFp.set('minDate', selectedDate);
+                    
+                    // Si la fecha de entrega es anterior a la nueva fecha de reserva, limpiarla
+                    const currentEntrega = fechaEntregaFp.selectedDates[0];
+                    if (currentEntrega && currentEntrega < selectedDate) {
+                        fechaEntregaFp.clear();
+                        fechaDevolucionFp.clear();
+                    }
+                }
+            }
+        });
+
+        // Fecha de entrega (debe ser igual o posterior a la fecha de reserva)
+        const fechaEntregaFp = flatpickr("#fecha_entrega_programada", {
+            enableTime: false,
+            dateFormat: "Y-m-d",
+            locale: "es",
+            minDate: "today",
+            allowInput: false,
+            clickOpens: true,
+            onChange: function(selectedDates, dateStr, instance) {
+                // Actualizar fecha mínima de devolución cuando cambie la fecha de entrega
+                if (selectedDates.length > 0) {
+                    const selectedDate = new Date(selectedDates[0]);
+                    fechaDevolucionFp.set('minDate', selectedDate);
+                    
+                    // Si la fecha de devolución es anterior a la nueva fecha de entrega, limpiarla
+                    const currentDevolucion = fechaDevolucionFp.selectedDates[0];
+                    if (currentDevolucion && currentDevolucion < selectedDate) {
+                        fechaDevolucionFp.clear();
+                    }
+                }
+            }
+        });
+
+        // Fecha de devolución (debe ser igual o posterior a la fecha de entrega)
+        const fechaDevolucionFp = flatpickr("#fecha_devolucion_programada", {
+            enableTime: false,
+            dateFormat: "Y-m-d",
+            locale: "es",
+            minDate: "today",
+            allowInput: false,
+            clickOpens: true
         });
         
         // Crear nuevo cliente
@@ -420,7 +564,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     // Agregar el nuevo cliente al select
                     const newOption = new Option(
-                        data.cliente.nombre + ' - ' + (data.cliente.telefono || 'Sin teléfono'),
+                        data.cliente.nombre + ' - ' + (data.cliente.correo || 'Sin cédula'),
                         data.cliente.id,
                         true,
                         true
@@ -462,7 +606,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedPrendasContainer = document.getElementById('selectedPrendasContainer');
     const noPrendasSelected = document.getElementById('noPrendasSelected');
     const prendasIdsContainer = document.getElementById('prendasIdsContainer');
-    const montoTotalInput = document.getElementById('monto_total');
     const searchInput = document.getElementById('searchPrendas');
     const prendaCards = document.querySelectorAll('.prenda-card');
     
@@ -472,7 +615,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (selectedPrendas.size === 0) {
             noPrendasSelected.style.display = 'block';
-            montoTotalInput.value = '0';
+            document.getElementById('monto_total').value = '0';
+            document.getElementById('monto_total_display').value = '0';
             calcularResumen();
             return;
         }
@@ -483,10 +627,11 @@ document.addEventListener('DOMContentLoaded', function() {
         let montoTotal = 0;
         
         selectedPrendas.forEach((prenda, id) => {
+            const subtotal = parseFloat(prenda.precio) * parseInt(prenda.cantidad);
             const prendaElement = document.createElement('div');
             prendaElement.className = 'prenda-preview-item';
             prendaElement.innerHTML = `
-                ${prenda.nombre} (${prenda.codigo}) - Talle: ${prenda.talleName} - Cant: ${prenda.cantidad} - ₲ ${(parseFloat(prenda.precio) * parseInt(prenda.cantidad)).toLocaleString()}
+                ${prenda.nombre} (${prenda.codigo}) - Talle: ${prenda.talleName} - Cant: ${prenda.cantidad} - ₲ ${formatearNumero(subtotal)}
                 <span class="remove-prenda" data-id="${id}">
                     <i class="fas fa-times"></i>
                 </span>
@@ -511,12 +656,13 @@ document.addEventListener('DOMContentLoaded', function() {
             cantidadInput.value = prenda.cantidad;
             prendasIdsContainer.appendChild(cantidadInput);
             
-            montoTotal += parseFloat(prenda.precio) * parseInt(prenda.cantidad);
+            montoTotal += subtotal;
             index++;
         });
         
         // Actualizar el monto total automáticamente
-        montoTotalInput.value = montoTotal;
+        document.getElementById('monto_total').value = montoTotal;
+        document.getElementById('monto_total_display').value = formatearNumero(montoTotal);
         calcularResumen();
         
         document.querySelectorAll('.remove-prenda').forEach(btn => {
@@ -630,21 +776,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const saldoGarantia = garantiaTotal - seniaGarantia;
         const totalACobrar = saldoAlquiler + saldoGarantia;
 
-        document.getElementById('saldoAlquiler').textContent = `₲ ${saldoAlquiler.toLocaleString()}`;
-        document.getElementById('saldoGarantia').textContent = `₲ ${saldoGarantia.toLocaleString()}`;
-        document.getElementById('totalACobrar').textContent = `₲ ${totalACobrar.toLocaleString()}`;
+        document.getElementById('saldoAlquiler').textContent = `₲ ${formatearNumero(saldoAlquiler)}`;
+        document.getElementById('saldoGarantia').textContent = `₲ ${formatearNumero(saldoGarantia)}`;
+        document.getElementById('totalACobrar').textContent = `₲ ${formatearNumero(totalACobrar)}`;
 
         if (montoTotal > 0 || garantiaTotal > 0) {
             document.getElementById('resumenFinanciero').style.display = 'block';
         }
     }
-
-    ['garantia_total', 'seña_alquiler', 'seña_garantia'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('input', calcularResumen);
-        }
-    });
     
     document.getElementById('reservaForm').addEventListener('submit', function(e) {
         if (selectedPrendas.size === 0) {

@@ -29,7 +29,9 @@
         <li class="breadcrumb-item active">Clientes</li>
     </ol>
     <div class="mb-4">
-        <a href="{{ route('clientes.create') }}" class="btn btn-primary">Añadir Nuevo Cliente</a>
+        <a href="{{ route('clientes.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Añadir Nuevo Cliente
+        </a>
     </div>
 
     <div class="card mb-4">
@@ -43,7 +45,8 @@
                         <th>Nombre</th>
                         <th>Teléfono</th>
                         <th>Dirección</th>
-                        <th>Numero de Cedula</th>
+                        <th>Número de Cédula</th>
+                        <th>Medidas</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
@@ -52,9 +55,24 @@
                     @foreach ($clientes as $cliente)
                         <tr>
                             <td>{{ $cliente->nombre }}</td>
-                            <td>{{ $cliente->telefono }}</td>
-                            <td>{{ $cliente->direccion }}</td>
-                            <td>{{ $cliente->correo }}</td>
+                            <td>{{ $cliente->telefono ?? '-' }}</td>
+                            <td>{{ $cliente->direccion ?? '-' }}</td>
+                            <td>{{ $cliente->correo ?? '-' }}</td>
+                            <td>
+                                @if($cliente->tieneMedidasBasicas())
+                                    <span class="badge bg-success me-1" title="Medidas básicas registradas">
+                                        <i class="fas fa-ruler"></i> Básicas
+                                    </span>
+                                @endif
+                                @if($cliente->tieneMedidasCompletas())
+                                    <span class="badge bg-warning" title="Medidas completas registradas">
+                                        <i class="fas fa-cut"></i> Completas
+                                    </span>
+                                @endif
+                                @if(!$cliente->tieneMedidasBasicas() && !$cliente->tieneMedidasCompletas())
+                                    <span class="badge bg-secondary">Sin medidas</span>
+                                @endif
+                            </td>
                             <td>
                                 <span class="badge {{ $cliente->estado ? 'bg-success' : 'bg-secondary' }}">
                                     {{ $cliente->estado ? 'Activo' : 'Eliminado' }}
@@ -64,17 +82,22 @@
                                 <div class="btn-group" role="group" aria-label="Basic actions">
                                     <!-- Botón para editar -->
                                     <form action="{{ route('clientes.edit', ['cliente' => $cliente]) }}" method="get" class="me-1">
-                                        <button type="submit" class="btn btn-primary">Editar</button>
+                                        <button type="submit" class="btn btn-primary btn-sm" title="Editar cliente">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                     </form>
                             
-                                    <form action="{{ route('clientes.clientes.historial', ['cliente' => $cliente]) }}" method="get" class="me-1"> <button type="submit" class="btn btn-info">Historial</button>
+                                    <form action="{{ route('clientes.historial', ['cliente' => $cliente]) }}" method="get" class="me-1">
+                                        <button type="submit" class="btn btn-info btn-sm" title="Ver historial">
+                                            <i class="fas fa-history"></i>
+                                        </button>
+                                    </form>
                             
                                     <!-- Botón para eliminar definitivamente -->
-                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#eliminarModal-{{ $cliente->id }}">
-                                        Eliminar
+                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#eliminarModal-{{ $cliente->id }}" title="Eliminar cliente">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
-                            
 
                                 <!-- Modal para eliminar definitivamente -->
                                 <div class="modal fade" id="eliminarModal-{{ $cliente->id }}" tabindex="-1" aria-labelledby="eliminarModalLabel-{{ $cliente->id }}" aria-hidden="true">
@@ -86,6 +109,14 @@
                                             </div>
                                             <div class="modal-body">
                                                 <p>¿Estás seguro de que deseas eliminar definitivamente este cliente? Esta acción no se puede deshacer.</p>
+                                                <div class="alert alert-warning">
+                                                    <strong>Cliente:</strong> {{ $cliente->nombre }}<br>
+                                                    <strong>Teléfono:</strong> {{ $cliente->telefono ?? 'No registrado' }}<br>
+                                                    <strong>Cédula:</strong> {{ $cliente->correo ?? 'No registrado' }}<br>
+                                                    @if($cliente->tieneMedidasBasicas() || $cliente->tieneMedidasCompletas())
+                                                        <strong>Nota:</strong> Este cliente tiene medidas registradas que también se eliminarán.
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -99,7 +130,6 @@
                                     </div>
                                 </div>
                             </td>
-                            
                         </tr>
                     @endforeach
                 </tbody>

@@ -67,7 +67,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-8">
-                                <i class="fa-solid fa-money-bill-trend-up"></i><span class="m-1">Ingresos y Egresos</span>
+                                <i class="fa-regular fa-pen-to-square"></i><span class="m-1">Reservas</span>
                             </div>
                             <div class="col-4">
                                 <h6 class="text-success">.</h6>
@@ -76,7 +76,7 @@
                         </div>
                     </div>
                     <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="{{ route('cierre-caja.index') }}">Ver Mas</a>
+                        <a class="small text-white stretched-link" href="{{ route('reservas.index') }}">Ver Mas</a>
                         <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                     </div>
                 </div>

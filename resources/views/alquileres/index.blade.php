@@ -56,6 +56,7 @@
                 <table id="datatablesSimple" class="table table-striped">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Cliente</th>
                             <th>Fecha Inicio</th>
                             <th>Fecha Fin</th>
@@ -68,6 +69,7 @@
                     <tbody>
                         @foreach ($alquileres as $alquiler)
                             <tr>
+                                <td>{{ $alquiler->id }}</td>
                                 <td>{{ $alquiler->cliente->nombre }}</td>
                                 <td>{{ \Carbon\Carbon::parse($alquiler->fecha_inicio)->format('d/m/Y') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($alquiler->fecha_fin)->format('d/m/Y') }}</td>

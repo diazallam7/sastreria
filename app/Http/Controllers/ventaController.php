@@ -18,7 +18,7 @@ class VentaController extends Controller
 {
     public function index()
     {
-        $ventas = Venta::with(['cliente', 'detalles'])->latest()->paginate(10);
+        $ventas = Venta::with(['cliente', 'user', 'detalles'])->latest()->paginate(10);
         return view('ventas.index', compact('ventas'));
     }
 
@@ -56,11 +56,12 @@ class VentaController extends Controller
             // Crear la venta principal
             $venta = Venta::create([
                 'cliente_id'   => $request->cliente_id,
+                'user_id'      => auth()->id(), // Agregar el usuario autenticado
                 'fecha_venta'  => $request->fecha_venta,
                 'precio_total' => $request->precio_total,
             ]);
 
-            Log::info('Venta creada:', ['venta_id' => $venta->id]);
+            Log::info('Venta creada:', ['venta_id' => $venta->id, 'user_id' => auth()->id()]);
 
             // Procesar cada producto
             foreach ($request->productos as $index => $producto) {
@@ -111,7 +112,7 @@ class VentaController extends Controller
 
     public function show($id)
     {
-        $venta = Venta::with(['cliente', 'detalles'])->findOrFail($id);
+        $venta = Venta::with(['cliente', 'user', 'detalles'])->findOrFail($id);
 
         // Obtener información detallada de cada producto
         $detallesConProductos = $venta->detalles->map(function ($detalle) {
@@ -135,7 +136,7 @@ class VentaController extends Controller
 
     public function edit($id)
     {
-        $venta    = Venta::with(['detalles'])->findOrFail($id);
+        $venta    = Venta::with(['detalles', 'user'])->findOrFail($id);
         $clientes = Cliente::all();
 
         $compras = Compra::with(['talles' => function ($query) {
@@ -198,11 +199,12 @@ class VentaController extends Controller
             // Eliminar detalles anteriores
             $venta->detalles()->delete();
 
-            // Actualizar venta principal
+            // Actualizar venta principal (mantener el usuario original, no cambiar)
             $venta->update([
                 'cliente_id'   => $request->cliente_id,
                 'fecha_venta'  => $request->fecha_venta,
                 'precio_total' => $request->precio_total,
+                // No actualizamos user_id para mantener el registro del vendedor original
             ]);
 
             // Crear nuevos detalles

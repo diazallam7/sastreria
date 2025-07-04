@@ -42,6 +42,7 @@
                 <table id="datatablesSimple" class="table table-striped">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Cliente</th>
                             <th>Fecha de Venta</th>
                             <th>Precio Total</th>
@@ -51,6 +52,7 @@
                     <tbody>
                         @foreach ($ventas as $venta)
                             <tr>
+                                <td>{{ $venta->id }}</td>
                                 <td>{{ $venta->cliente->nombre }}</td>
                                 <td>{{ $venta->fecha_venta->format('d/m/Y') }}</td>
                                 <td>₲ {{ number_format($venta->precio_total, 0, ',', '.') }}</td>

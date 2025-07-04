@@ -56,22 +56,22 @@
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="precio_alquiler" class="form-label">Precio de Alquiler (₲)</label>
-                        <input type="number" step="0.01" class="form-control @error('precio_alquiler') is-invalid @enderror" 
-                               name="precio_alquiler" id="precio_alquiler" value="{{ old('precio_alquiler') }}" required>
+                        <label for="precio_alquiler_display" class="form-label">Precio de Alquiler (₲)</label>
+                        <input type="text" class="form-control @error('precio_alquiler') is-invalid @enderror" 
+                               id="precio_alquiler_display" placeholder="0" autocomplete="off" required>
+                        <input type="hidden" name="precio_alquiler" id="precio_alquiler" value="{{ old('precio_alquiler', 0) }}">
                         @error('precio_alquiler')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="descripcion" class="form-label">Descripción (opcional)</label>
-                    <textarea class="form-control @error('descripcion') is-invalid @enderror" 
-                              name="descripcion" id="descripcion" rows="3">{{ old('descripcion') }}</textarea>
-                    @error('descripcion')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <div class="col-md-6">
+                        <label for="observacion" class="form-label">Observación (opcional)</label>
+                        <textarea class="form-control @error('observacion') is-invalid @enderror" 
+                                  name="observacion" id="observacion" rows="3">{{ old('observacion') }}</textarea>
+                        @error('observacion')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -137,6 +137,45 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let talleIndex = document.querySelectorAll('.talle-container').length;
+        
+        // Funciones para formatear números
+        function formatearNumero(numero) {
+            if (!numero || numero === 0) return '0';
+            return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function limpiarNumero(numeroFormateado) {
+            if (!numeroFormateado) return 0;
+            return parseInt(numeroFormateado.toString().replace(/\./g, '')) || 0;
+        }
+
+        // Configurar campo de precio con formato
+        const precioDisplay = document.getElementById('precio_alquiler_display');
+        const precioHidden = document.getElementById('precio_alquiler');
+        
+        // Inicializar con valor existente
+        const valorInicial = precioHidden.value || 0;
+        if (valorInicial > 0) {
+            precioDisplay.value = formatearNumero(valorInicial);
+        }
+
+        // Event listener para formatear mientras se escribe
+        precioDisplay.addEventListener('input', function() {
+            let valor = this.value.replace(/[^\d.]/g, '');
+            let numeroLimpio = valor.replace(/\./g, '');
+            let numeroFormateado = formatearNumero(numeroLimpio);
+            
+            this.value = numeroFormateado;
+            precioHidden.value = numeroLimpio;
+        });
+
+        // Event listener para formatear al perder el foco
+        precioDisplay.addEventListener('blur', function() {
+            if (!this.value || this.value === '0') {
+                this.value = '0';
+                precioHidden.value = 0;
+            }
+        });
         
         // Agregar nuevo talle
         document.getElementById('addTalle').addEventListener('click', function() {

@@ -7,13 +7,12 @@ use App\Models\Devolucion;
 use App\Models\GastoVario;
 use App\Models\Reserva;
 use App\Models\Venta;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use PDF;
 
 class CierreCajaController extends Controller implements HasMiddleware
 {
@@ -26,14 +25,166 @@ class CierreCajaController extends Controller implements HasMiddleware
             new Middleware(\Spatie\Permission\Middleware\PermissionMiddleware::using('ver-cierre-caja-mensual'), only: ['resumenMensual']),
         ];
     }
-    public function index()
+   public function index(Request $request)
     {
-        $fechaHoy    = now()->format('Y-m-d');
-        $movimientos = $this->calcularMovimientosDia($fechaHoy);
+        $fecha = $request->get('fecha', now()->format('Y-m-d'));
+        $movimientos = $this->calcularMovimientosDia($fecha);
 
-        return view('cierre-caja.index', compact('movimientos', 'fechaHoy'));
+        return view('cierre-caja.index', compact('movimientos', 'fecha'));
     }
 
+    
+    private function calcularMovimientosDia($fecha)
+    {
+        $fechaCarbon = Carbon::parse($fecha);
+
+        // INGRESOS
+        $ingresos = [
+            'alquileres' => 0,
+            'multas_retraso' => 0,
+            'ventas' => 0,
+            'ingresos_cancelaciones' => 0,
+            'total' => 0,
+        ];
+
+        // EGRESOS
+        $egresos = [
+            'compras' => 0,
+            'gastos_varios' => 0,
+            'total' => 0,
+        ];
+
+        // Detalles para mostrar en el PDF
+        $detalles = [
+            'reservas' => collect(),
+            'cancelaciones' => collect(),
+            'alquileres_iniciados' => collect(),
+            'devoluciones' => collect(),
+            'ventas' => collect(),
+            'compras' => collect(),
+            'gastos' => collect(),
+        ];
+
+        // 1. Alquileres iniciados hoy
+        $alquileresHoy = Alquiler::with('cliente')
+            ->whereDate('fecha_inicio', $fecha)
+            ->where('estado', '!=', 0) // No cancelados
+            ->get();
+
+        foreach ($alquileresHoy as $alquiler) {
+            $ingresos['alquileres'] += $alquiler->costo_total;
+        }
+        $detalles['alquileres_iniciados'] = $alquileresHoy;
+
+        // 2. Multas por retraso (solo las multas como INGRESOS POSITIVOS)
+        $devolucionesHoy = Devolucion::with(['alquiler.cliente'])
+            ->whereDate('fecha_devolucion', $fecha)
+            ->get();
+
+        foreach ($devolucionesHoy as $devolucion) {
+            // Sumar la multa aplicada como INGRESO POSITIVO
+            $multaAplicada = $devolucion->multa_aplicada_real ?? $devolucion->multa_aplicada ?? 0;
+            if ($multaAplicada > 0) {
+                $ingresos['multas_retraso'] += $multaAplicada; // Suma positiva
+            }
+        }
+        $detalles['devoluciones'] = $devolucionesHoy;
+
+        // 3. Ventas del día
+        $ventasHoy = Venta::with('cliente')
+            ->whereDate('fecha_venta', $fecha)
+            ->get();
+
+        foreach ($ventasHoy as $venta) {
+            $ingresos['ventas'] += $venta->precio_total;
+        }
+        $detalles['ventas'] = $ventasHoy;
+
+        // 4. Ingresos por cancelaciones (lo que se queda la empresa)
+        $cancelacionesHoy = Reserva::with('cliente')
+            ->whereDate('updated_at', $fecha)
+            ->where('estado', 'cancelada')
+            ->get();
+
+        foreach ($cancelacionesHoy as $cancelacion) {
+            $totalRecibido = $cancelacion->seña_alquiler + $cancelacion->seña_garantia;
+            $devuelto = $cancelacion->seña_devuelta ?? 0;
+            $ingresoNeto = $totalRecibido - $devuelto;
+            if ($ingresoNeto > 0) {
+                $ingresos['ingresos_cancelaciones'] += $ingresoNeto;
+            }
+        }
+        $detalles['cancelaciones'] = $cancelacionesHoy;
+
+        // EGRESOS
+
+        // 1. Compras del día - CORREGIDO: Cargar correctamente los talles y calcular el total
+        $comprasHoy = Compra::with('talles')->whereDate('fecha_compra', $fecha)->get();
+
+        Log::info("=== INICIO CÁLCULO COMPRAS ===");
+        Log::info("Fecha: {$fecha}");
+        Log::info("Compras encontradas: " . $comprasHoy->count());
+
+        foreach ($comprasHoy as $compra) {
+            Log::info("--- Procesando Compra ID: {$compra->id} ---");
+            Log::info("Nombre: {$compra->nombre_producto}");
+            Log::info("Precio compra: {$compra->precio_compra}");
+            Log::info("Talles cargados: " . $compra->talles->count());
+            
+            // Calcular cantidad total usando la relación talles
+            $cantidadTotal = 0;
+            foreach ($compra->talles as $talle) {
+                Log::info("Talle {$talle->talle}: cantidad_total = {$talle->cantidad_total}");
+                $cantidadTotal += $talle->cantidad_total;
+            }
+            
+            Log::info("Cantidad total calculada: {$cantidadTotal}");
+            
+            // Calcular el total de la compra (precio unitario * cantidad total)
+            $totalCompra = $compra->precio_compra * $cantidadTotal;
+            
+            Log::info("Total compra: {$compra->precio_compra} x {$cantidadTotal} = {$totalCompra}");
+            
+            $egresos['compras'] += $totalCompra;
+            
+            // Agregar información calculada para mostrar en el detalle
+            $compra->cantidad_total_calculada = $cantidadTotal;
+            $compra->precio_total_calculado = $totalCompra;
+            
+            Log::info("Egreso acumulado hasta ahora: {$egresos['compras']}");
+        }
+        
+        Log::info("=== TOTAL FINAL EGRESOS COMPRAS: {$egresos['compras']} ===");
+        
+        $detalles['compras'] = $comprasHoy;
+
+        // 2. Gastos varios
+        $gastosHoy = GastoVario::whereDate('fecha', $fecha)->get();
+
+        foreach ($gastosHoy as $gasto) {
+            $egresos['gastos_varios'] += $gasto->monto;
+        }
+        $detalles['gastos'] = $gastosHoy;
+
+        // Calcular totales
+        $ingresos['total'] = array_sum(array_filter($ingresos, 'is_numeric'));
+        $egresos['total'] = array_sum(array_filter($egresos, 'is_numeric'));
+
+        $saldoNeto = $ingresos['total'] - $egresos['total'];
+
+        Log::info("=== RESUMEN FINAL ===");
+        Log::info("Total ingresos: {$ingresos['total']}");
+        Log::info("Total egresos: {$egresos['total']}");
+        Log::info("Saldo neto: {$saldoNeto}");
+
+        return [
+            'fecha' => $fecha,
+            'ingresos' => $ingresos,
+            'egresos' => $egresos,
+            'saldo_neto' => $saldoNeto,
+            'detalles' => $detalles,
+        ];
+    }
     public function consultarFecha(Request $request)
     {
         $request->validate([
@@ -45,130 +196,9 @@ class CierreCajaController extends Controller implements HasMiddleware
 
         return view('cierre-caja.index', compact('movimientos', 'fecha'));
     }
-
-    public function calcularMovimientosDia($fecha)
+public function exportarPDF(Request $request)
     {
-        // INGRESOS
-        // 1. Señas recibidas en reservas del día
-        $señasRecibidas = Reserva::whereDate('created_at', $fecha)
-            ->whereIn('estado', ['confirmada', 'entregada', 'cancelada'])
-            ->sum(DB::raw('seña_alquiler + seña_garantia'));
-
-        // 2. Alquileres iniciados del día (usando fecha_inicio)
-        $alquileresDelDia = Alquiler::whereDate('fecha_inicio', $fecha)->get();
-        $totalAlquileres  = $alquileresDelDia->sum('costo_total');
-
-        // 3. Multas por retraso (si existen en devoluciones)
-        $multasRetraso = 0;
-        if (Schema::hasTable('devoluciones') && Schema::hasColumn('devoluciones', 'multa_aplicada_real')) {
-            $multasRetraso = Devolucion::whereDate('fecha_devolucion', $fecha)
-                ->sum('multa_aplicada_real'); // Usar multa_aplicada_real en lugar de multa
-        } elseif (Schema::hasTable('devoluciones') && Schema::hasColumn('devoluciones', 'multa_aplicada')) {
-            $multasRetraso = Devolucion::whereDate('fecha_devolucion', $fecha)
-                ->sum('multa_aplicada'); // Alternativa si no existe multa_aplicada_real
-        } elseif (Schema::hasTable('devoluciones') && Schema::hasColumn('devoluciones', 'multa')) {
-            $multasRetraso = Devolucion::whereDate('fecha_devolucion', $fecha)
-                ->sum('multa'); // Última alternativa
-        }
-
-        // 4. Ventas del día - Corregido para usar precio_total
-        $ventasDelDia = Venta::whereDate('fecha_venta', $fecha)->get();
-        $totalVentas  = $ventasDelDia->sum('precio_total');
-
-        // 5. Cancelaciones del día
-        $cancelacionesDelDia = Reserva::where('estado', 'cancelada')
-            ->whereDate('updated_at', $fecha)
-            ->get();
-
-        $ingresosCancelaciones = $cancelacionesDelDia->sum(function ($reserva) {
-            $totalRecibido = $reserva->seña_alquiler + $reserva->seña_garantia;
-            $devuelto      = $reserva->seña_devuelta ?? 0;
-            $diferencia    = $totalRecibido - $devuelto;
-            return $diferencia > 0 ? $diferencia : 0;
-        });
-
-        // EGRESOS
-        // 1. Devoluciones por cancelaciones
-        $devolucionesCancelaciones = $cancelacionesDelDia->sum('seña_devuelta');
-
-        // 2. Devoluciones de garantías (si existe la tabla)
-        $garantiasDevueltas = 0;
-        $devolucionesDelDia = collect();
-        if (Schema::hasTable('devoluciones')) {
-            try {
-                $devolucionesDelDia = Devolucion::whereDate('fecha_devolucion', $fecha)
-                    ->with(['alquiler.cliente'])
-                    ->get();
-
-                // Intentar con diferentes campos según lo que exista
-                if (Schema::hasColumn('devoluciones', 'monto_devuelto_real')) {
-                    $garantiasDevueltas = $devolucionesDelDia->sum('monto_devuelto_real');
-                } elseif (Schema::hasColumn('devoluciones', 'monto_devuelto')) {
-                    $garantiasDevueltas = $devolucionesDelDia->sum('monto_devuelto');
-                }
-            } catch (\Exception $e) {
-                // Si hay error en la consulta, mantener valores por defecto
-                $devolucionesDelDia = collect();
-                $garantiasDevueltas = 0;
-            }
-        }
-
-        // 3. Compras del día
-        $comprasDelDia = Compra::whereDate('fecha_compra', $fecha)->get();
-        $totalCompras  = $comprasDelDia->sum('precio_compra');
-
-        // 4. Gastos varios del día
-        $gastosDelDia = GastoVario::whereDate('fecha', $fecha)->get();
-        $totalGastos  = $gastosDelDia->sum('monto');
-
-        // TOTALES
-        $totalIngresos = $señasRecibidas + $totalAlquileres + $multasRetraso + $totalVentas + $ingresosCancelaciones;
-        $totalEgresos  = $devolucionesCancelaciones + $garantiasDevueltas + $totalCompras + $totalGastos;
-        $saldoNeto     = $totalIngresos - $totalEgresos;
-
-        // DETALLES PARA EL REPORTE
-        $reservasDelDia = Reserva::whereDate('created_at', $fecha)
-            ->whereIn('estado', ['confirmada', 'entregada', 'cancelada'])
-            ->with('cliente')
-            ->get();
-
-        $alquileresIniciados = Alquiler::whereDate('fecha_inicio', $fecha)
-            ->with(['cliente'])
-            ->get();
-
-        return [
-            'fecha'      => $fecha,
-            'ingresos'   => [
-                'señas_recibidas'        => $señasRecibidas,
-                'alquileres'             => $totalAlquileres,
-                'multas_retraso'         => $multasRetraso,
-                'ventas'                 => $totalVentas,
-                'ingresos_cancelaciones' => $ingresosCancelaciones,
-                'total'                  => $totalIngresos,
-            ],
-            'egresos'    => [
-                'devoluciones_cancelaciones' => $devolucionesCancelaciones,
-                'garantias_devueltas'        => $garantiasDevueltas,
-                'compras'                    => $totalCompras,
-                'gastos_varios'              => $totalGastos,
-                'total'                      => $totalEgresos,
-            ],
-            'saldo_neto' => $saldoNeto,
-            'detalles'   => [
-                'reservas'             => $reservasDelDia,
-                'cancelaciones'        => $cancelacionesDelDia,
-                'alquileres_iniciados' => $alquileresIniciados,
-                'ventas'               => $ventasDelDia,
-                'compras'              => $comprasDelDia,
-                'gastos'               => $gastosDelDia,
-                'devoluciones'         => $devolucionesDelDia,
-            ],
-        ];
-    }
-
-    public function exportarPDF(Request $request)
-    {
-        $fecha       = $request->get('fecha', now()->format('Y-m-d'));
+        $fecha = $request->get('fecha', now()->format('Y-m-d'));
         $movimientos = $this->calcularMovimientosDia($fecha);
 
         $pdf = PDF::loadView('cierre-caja.pdf', compact('movimientos'));
@@ -178,7 +208,9 @@ class CierreCajaController extends Controller implements HasMiddleware
         return $pdf->download($nombreArchivo);
     }
 
-    public function resumenSemanal(Request $request)
+
+   
+     public function resumenSemanal(Request $request)
     {
         // Si se proporciona una fecha, usamos esa semana, de lo contrario usamos la semana actual
         $fecha       = $request->get('fecha', now()->format('Y-m-d'));
@@ -262,7 +294,8 @@ class CierreCajaController extends Controller implements HasMiddleware
         ));
     }
 
-    public function resumenMensual(Request $request)
+
+     public function resumenMensual(Request $request)
     {
         // Si se proporciona una fecha, usamos ese mes, de lo contrario usamos el mes actual
         $fecha       = $request->get('fecha', now()->format('Y-m-d'));
@@ -288,14 +321,15 @@ class CierreCajaController extends Controller implements HasMiddleware
             'saldo'  => 999999999,
         ];
 
-        // Agrupar por semanas
-        $semanaActual = $fechaInicio->copy()->startOfWeek();
+        // Agrupar por semanas del mes
         $numeroSemana = 1;
+        $fechaActual = $fechaInicio->copy();
 
-        while ($semanaActual <= $fechaFin) {
-            $finSemana = $semanaActual->copy()->endOfWeek();
-            if ($finSemana > $fechaFin) {
-                $finSemana = $fechaFin->copy();
+        while ($fechaActual <= $fechaFin) {
+            // Encontrar el final de la semana actual, pero sin salir del mes
+            $finSemanaActual = $fechaActual->copy()->endOfWeek();
+            if ($finSemanaActual > $fechaFin) {
+                $finSemanaActual = $fechaFin->copy();
             }
 
             $ingresosSemana  = 0;
@@ -304,7 +338,6 @@ class CierreCajaController extends Controller implements HasMiddleware
 
             $desgloseSemana = [
                 'ingresos' => [
-                    'señas_recibidas'        => 0,
                     'alquileres'             => 0,
                     'multas_retraso'         => 0,
                     'ventas'                 => 0,
@@ -312,29 +345,29 @@ class CierreCajaController extends Controller implements HasMiddleware
                     'total'                  => 0,
                 ],
                 'egresos'  => [
-                    'devoluciones_cancelaciones' => 0,
-                    'garantias_devueltas'        => 0,
                     'compras'                    => 0,
                     'gastos_varios'              => 0,
                     'total'                      => 0,
                 ],
             ];
 
-            for ($fecha = $semanaActual->copy(); $fecha <= $finSemana; $fecha->addDay()) {
-                // Solo incluir días que pertenecen al mes actual
-                if ($fecha->month == $fechaCarbon->month) {
-                    $movimientos = $this->calcularMovimientosDia($fecha->format('Y-m-d'));
+            // Procesar cada día de la semana actual
+            for ($fecha = $fechaActual->copy(); $fecha <= $finSemanaActual; $fecha->addDay()) {
+                $movimientos = $this->calcularMovimientosDia($fecha->format('Y-m-d'));
 
-                    $ingresosSemana += $movimientos['ingresos']['total'];
-                    $egresosSemana += $movimientos['egresos']['total'];
-                    $saldoNetoSemana += $movimientos['saldo_neto'];
+                $ingresosSemana += $movimientos['ingresos']['total'];
+                $egresosSemana += $movimientos['egresos']['total'];
+                $saldoNetoSemana += $movimientos['saldo_neto'];
 
-                    // Acumular desglose
-                    foreach ($movimientos['ingresos'] as $key => $valor) {
+                // Acumular desglose
+                foreach ($movimientos['ingresos'] as $key => $valor) {
+                    if (isset($desgloseSemana['ingresos'][$key])) {
                         $desgloseSemana['ingresos'][$key] += $valor;
                     }
+                }
 
-                    foreach ($movimientos['egresos'] as $key => $valor) {
+                foreach ($movimientos['egresos'] as $key => $valor) {
+                    if (isset($desgloseSemana['egresos'][$key])) {
                         $desgloseSemana['egresos'][$key] += $valor;
                     }
                 }
@@ -342,8 +375,8 @@ class CierreCajaController extends Controller implements HasMiddleware
 
             $movimientosMensuales[] = [
                 'semana'       => $numeroSemana,
-                'fecha_inicio' => $semanaActual->format('d/m'),
-                'fecha_fin'    => $finSemana->format('d/m'),
+                'fecha_inicio' => $fechaActual->format('d/m'),
+                'fecha_fin'    => $finSemanaActual->format('d/m'),
                 'ingresos'     => $ingresosSemana,
                 'egresos'      => $egresosSemana,
                 'saldo_neto'   => $saldoNetoSemana,
@@ -366,7 +399,19 @@ class CierreCajaController extends Controller implements HasMiddleware
                 $peorSemana['saldo']  = $saldoNetoSemana;
             }
 
-            $semanaActual->addWeek();
+            // Avanzar al siguiente lunes o al siguiente día si ya estamos en lunes
+            $fechaActual = $finSemanaActual->copy()->addDay();
+            
+            // Si el siguiente día está fuera del mes, salir del bucle
+            if ($fechaActual > $fechaFin) {
+                break;
+            }
+            
+            // Si no es lunes, avanzar hasta el próximo lunes
+            if ($fechaActual->dayOfWeek !== 1) { // 1 = lunes
+                $fechaActual = $fechaActual->next('Monday');
+            }
+            
             $numeroSemana++;
         }
 
@@ -397,6 +442,9 @@ class CierreCajaController extends Controller implements HasMiddleware
         ));
     }
 
+
+
+    
     public function exportarPDFSemanal(Request $request)
     {
         // Si se proporciona una fecha, usamos esa semana, de lo contrario usamos la semana actual
@@ -416,11 +464,13 @@ class CierreCajaController extends Controller implements HasMiddleware
         $mejorDia = [
             'fecha' => null,
             'saldo' => -999999999,
+            'dia'   => '',
         ];
 
         $peorDia = [
             'fecha' => null,
             'saldo' => 999999999,
+            'dia'   => '',
         ];
 
         for ($fecha = $fechaInicio->copy(); $fecha <= $fechaFin; $fecha->addDay()) {
@@ -511,14 +561,15 @@ class CierreCajaController extends Controller implements HasMiddleware
             'saldo'  => 999999999,
         ];
 
-        // Agrupar por semanas
-        $semanaActual = $fechaInicio->copy()->startOfWeek();
+        // Agrupar por semanas del mes
         $numeroSemana = 1;
+        $fechaActual = $fechaInicio->copy();
 
-        while ($semanaActual <= $fechaFin) {
-            $finSemana = $semanaActual->copy()->endOfWeek();
-            if ($finSemana > $fechaFin) {
-                $finSemana = $fechaFin->copy();
+        while ($fechaActual <= $fechaFin) {
+            // Encontrar el final de la semana actual, pero sin salir del mes
+            $finSemanaActual = $fechaActual->copy()->endOfWeek();
+            if ($finSemanaActual > $fechaFin) {
+                $finSemanaActual = $fechaFin->copy();
             }
 
             $ingresosSemana  = 0;
@@ -527,7 +578,6 @@ class CierreCajaController extends Controller implements HasMiddleware
 
             $desgloseSemana = [
                 'ingresos' => [
-                    'señas_recibidas'        => 0,
                     'alquileres'             => 0,
                     'multas_retraso'         => 0,
                     'ventas'                 => 0,
@@ -535,29 +585,29 @@ class CierreCajaController extends Controller implements HasMiddleware
                     'total'                  => 0,
                 ],
                 'egresos'  => [
-                    'devoluciones_cancelaciones' => 0,
-                    'garantias_devueltas'        => 0,
                     'compras'                    => 0,
                     'gastos_varios'              => 0,
                     'total'                      => 0,
                 ],
             ];
 
-            for ($fecha = $semanaActual->copy(); $fecha <= $finSemana; $fecha->addDay()) {
-                // Solo incluir días que pertenecen al mes actual
-                if ($fecha->month == $fechaCarbon->month) {
-                    $movimientos = $this->calcularMovimientosDia($fecha->format('Y-m-d'));
+            // Procesar cada día de la semana actual
+            for ($fecha = $fechaActual->copy(); $fecha <= $finSemanaActual; $fecha->addDay()) {
+                $movimientos = $this->calcularMovimientosDia($fecha->format('Y-m-d'));
 
-                    $ingresosSemana += $movimientos['ingresos']['total'];
-                    $egresosSemana += $movimientos['egresos']['total'];
-                    $saldoNetoSemana += $movimientos['saldo_neto'];
+                $ingresosSemana += $movimientos['ingresos']['total'];
+                $egresosSemana += $movimientos['egresos']['total'];
+                $saldoNetoSemana += $movimientos['saldo_neto'];
 
-                    // Acumular desglose
-                    foreach ($movimientos['ingresos'] as $key => $valor) {
+                // Acumular desglose
+                foreach ($movimientos['ingresos'] as $key => $valor) {
+                    if (isset($desgloseSemana['ingresos'][$key])) {
                         $desgloseSemana['ingresos'][$key] += $valor;
                     }
+                }
 
-                    foreach ($movimientos['egresos'] as $key => $valor) {
+                foreach ($movimientos['egresos'] as $key => $valor) {
+                    if (isset($desgloseSemana['egresos'][$key])) {
                         $desgloseSemana['egresos'][$key] += $valor;
                     }
                 }
@@ -565,8 +615,8 @@ class CierreCajaController extends Controller implements HasMiddleware
 
             $movimientosMensuales[] = [
                 'semana'       => $numeroSemana,
-                'fecha_inicio' => $semanaActual->format('d/m'),
-                'fecha_fin'    => $finSemana->format('d/m'),
+                'fecha_inicio' => $fechaActual->format('d/m'),
+                'fecha_fin'    => $finSemanaActual->format('d/m'),
                 'ingresos'     => $ingresosSemana,
                 'egresos'      => $egresosSemana,
                 'saldo_neto'   => $saldoNetoSemana,
@@ -589,7 +639,19 @@ class CierreCajaController extends Controller implements HasMiddleware
                 $peorSemana['saldo']  = $saldoNetoSemana;
             }
 
-            $semanaActual->addWeek();
+            // Avanzar al siguiente lunes o al siguiente día si ya estamos en lunes
+            $fechaActual = $finSemanaActual->copy()->addDay();
+            
+            // Si el siguiente día está fuera del mes, salir del bucle
+            if ($fechaActual > $fechaFin) {
+                break;
+            }
+            
+            // Si no es lunes, avanzar hasta el próximo lunes
+            if ($fechaActual->dayOfWeek !== 1) { // 1 = lunes
+                $fechaActual = $fechaActual->next('Monday');
+            }
+            
             $numeroSemana++;
         }
 
@@ -623,11 +685,10 @@ class CierreCajaController extends Controller implements HasMiddleware
 
         return $pdf->download($nombreArchivo);
     }
-
     /**
      * Traduce el nombre del día de la semana al español
      */
-    private function traducirDiaSemana($dia)
+       private function traducirDiaSemana($dia)
     {
         $dias = [
             'Monday'    => 'Lunes',
@@ -641,7 +702,6 @@ class CierreCajaController extends Controller implements HasMiddleware
 
         return $dias[$dia] ?? $dia;
     }
-
     /**
      * Traduce el nombre del mes al español
      */
