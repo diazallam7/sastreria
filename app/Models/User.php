@@ -50,4 +50,7 @@ class User extends Authenticatable
     public function ventas(){
         return $this->hasMany(Venta::class);
     }
+    public function reservas(){
+        return $this->hasMany(Reserva::class);
+    }
 }

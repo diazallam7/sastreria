@@ -53,8 +53,7 @@ public static function middleware(): array {
                 'nombre' => $validated['nombre'],
                 'precio_alquiler' => $validated['precio_alquiler'],
                 'descripcion' => $validated['descripcion'],
-            ]);
-            
+            ]);            
             // Crear los registros de talles
             foreach ($validated['talles'] as $talleData) {
                 TalleStock::create([

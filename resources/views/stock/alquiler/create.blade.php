@@ -65,10 +65,10 @@
                         @enderror
                     </div>
                     <div class="col-md-6">
-                        <label for="observacion" class="form-label">Observación (opcional)</label>
-                        <textarea class="form-control @error('observacion') is-invalid @enderror" 
-                                  name="observacion" id="observacion" rows="3">{{ old('observacion') }}</textarea>
-                        @error('observacion')
+                        <label for="descripcion" class="form-label">Observación (opcional)</label>
+                        <textarea class="form-control @error('descripcion') is-invalid @enderror" 
+                                  name="descripcion" id="descripcion" rows="3">{{ old('descripcion') }}</textarea>
+                        @error('descripcion')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

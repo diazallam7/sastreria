@@ -79,9 +79,6 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('stock.alquiler.show', $item->id) }}" class="btn btn-info btn-sm">
-                                        <i class="fas fa-eye"></i> Ver
-                                    </a>
                                     <a href="{{ route('stock.alquiler.edit', $item->id) }}" class="btn btn-warning btn-sm">
                                         <i class="fas fa-edit"></i> Editar
                                     </a>

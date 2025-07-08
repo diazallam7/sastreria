@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
             'password'=> bcrypt('admin'),
         ]);*/
 
+        
         $rol = Role::create(['name'=>'administrador']);
         $permisos = Permission::pluck('id', 'id')->all();
         $rol->syncPermissions($permisos);

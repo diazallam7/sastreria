@@ -13,6 +13,7 @@ class Reserva extends Model
 
     protected $fillable = [
         'cliente_id',
+        'user_id',
         'fecha_reserva',
         'fecha_entrega_programada',
         'fecha_devolucion_programada',
@@ -45,6 +46,11 @@ class Reserva extends Model
         return $this->belongsTo(Cliente::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function alquiler()
     {
         return $this->belongsTo(Alquiler::class);
@@ -56,6 +62,7 @@ class Reserva extends Model
                     ->withPivot('talle_id', 'cantidad')
                     ->withTimestamps();
     }
+
 
     // Accessors
     public function getMontoFormateadoAttribute()

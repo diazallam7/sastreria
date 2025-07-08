@@ -26,7 +26,8 @@
                                 <div class="card-body">
                                     @if ($errors->any())
                                         @foreach ($errors->all() as $item)
-                                            <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+                                            <div class="alert alert-secondary alert-dismissible fade show"
+                                                role="alert">
                                                 {{ $item }}
                                                 <button type="button" class="btn-close" data-bs-dismiss="alert"
                                                     aria-label="Close"></button>
@@ -69,7 +70,8 @@
             <footer class="py-4 bg-light mt-auto">
                 <div class="container-fluid px-4">
                     <div class="d-flex align-items-center justify-content-between small">
-                        <div class="text-muted">Copyright &copy; HakeSystems-2025</div>
+                        <div class="text-muted">Copyright &copy; Desarrollado por <a
+                                href="https://www.instagram.com/allamdiaz7/">Allam Diaz</a></div>
                     </div>
                 </div>
             </footer>
