@@ -44,8 +44,8 @@
                         <tr class="hover:bg-ink-50/50" wire:key="dev-{{ $a->id }}">
                             <td class="px-4 py-3 font-medium text-ink-900">{{ $a->cliente?->nombre ?? '—' }}</td>
                             <td class="px-4 py-3 text-xs text-ink-500">
-                                @foreach ($a->stockItems as $s)
-                                    <div>{{ $s->nombre }} <span class="text-ink-400">({{ $tallesNombres[$s->pivot->talle_id] ?? '—' }})</span></div>
+                                @foreach ($a->prendasAgrupadas() as $p)
+                                    <div>{{ $p->nombre }} <span class="text-ink-400">({{ $p->talle }})</span></div>
                                 @endforeach
                             </td>
                             <td class="px-4 py-3 text-ink-600">{{ $a->fecha_fin->format('d/m/Y') }}</td>

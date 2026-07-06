@@ -14,8 +14,11 @@ class Form extends Component
     public ?StockAlquiler $item = null;
 
     public string $codigo = '';
+
     public string $nombre = '';
+
     public ?string $precio_alquiler = null;
+
     public string $descripcion = '';
 
     /** @var array<int, array{id:int|null, talle:string, cantidad:mixed}> */
@@ -58,13 +61,13 @@ class Form extends Component
     protected function rules(): array
     {
         return [
-            'codigo'            => ['required', 'string', 'max:50', Rule::unique('stock_alquiler', 'codigo')->ignore($this->item?->id)],
-            'nombre'            => ['required', 'string', 'max:255'],
-            'precio_alquiler'   => ['required', 'integer', 'min:0'],
-            'descripcion'       => ['nullable', 'string', 'max:1000'],
-            'talles'            => ['required', 'array', 'min:1'],
-            'talles.*.id'       => ['nullable', 'integer'],
-            'talles.*.talle'    => ['required', 'string', 'max:50'],
+            'codigo' => ['nullable', 'string', 'max:50', Rule::unique('stock_alquiler', 'codigo')->ignore($this->item?->id)],
+            'nombre' => ['required', 'string', 'max:255'],
+            'precio_alquiler' => ['required', 'integer', 'min:0'],
+            'descripcion' => ['nullable', 'string', 'max:1000'],
+            'talles' => ['required', 'array', 'min:1'],
+            'talles.*.id' => ['nullable', 'integer'],
+            'talles.*.talle' => ['required', 'string', 'max:50'],
             'talles.*.cantidad' => ['required', 'integer', 'min:0'],
         ];
     }
@@ -72,10 +75,9 @@ class Form extends Component
     protected function messages(): array
     {
         return [
-            'codigo.required'         => 'El código es obligatorio.',
-            'codigo.unique'           => 'Ya existe una prenda con ese código.',
-            'nombre.required'         => 'El nombre es obligatorio.',
-            'talles.required'         => 'Debe registrar al menos un talle.',
+            'codigo.unique' => 'Ya existe una prenda con ese código.',
+            'nombre.required' => 'El nombre es obligatorio.',
+            'talles.required' => 'Debe registrar al menos un talle.',
             'talles.*.talle.required' => 'El talle es obligatorio.',
         ];
     }
@@ -85,12 +87,12 @@ class Form extends Component
         $this->validate();
 
         $service->guardar(
-            $this->item ?? new StockAlquiler(),
+            $this->item ?? new StockAlquiler,
             [
-                'codigo'          => $this->codigo,
-                'nombre'          => $this->nombre,
+                'codigo' => $this->codigo !== '' ? $this->codigo : null,
+                'nombre' => $this->nombre,
                 'precio_alquiler' => $this->precio_alquiler,
-                'descripcion'     => $this->descripcion ?: null,
+                'descripcion' => $this->descripcion ?: null,
             ],
             $this->talles,
         );

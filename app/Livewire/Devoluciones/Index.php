@@ -4,7 +4,6 @@ namespace App\Livewire\Devoluciones;
 
 use App\Models\Alquiler;
 use App\Models\Configuracion;
-use App\Models\TalleStock;
 use App\Services\DevolucionService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -24,13 +23,21 @@ class Index extends Component
 
     // Modal procesar devolución
     public bool $modalProcesar = false;
+
     public ?int $alquilerId = null;
+
     public string $clienteNombre = '';
+
     public int $multaCalculada = 0;
+
     public int $garantiaOriginal = 0;
+
     public int $diasRetraso = 0;
+
     public ?string $multaAplicada = null;
+
     public string $motivo = '';
+
     public string $observaciones = '';
 
     public function updatingBuscar(): void
@@ -44,6 +51,7 @@ class Index extends Component
 
         if (! $alquiler->estaActivo()) {
             session()->flash('error', 'Este alquiler ya fue devuelto.');
+
             return;
         }
 
@@ -86,7 +94,7 @@ class Index extends Component
 
         $this->validate([
             'multaAplicada' => ['required', 'integer', 'min:0'],
-            'motivo'        => [$this->ajustada ? 'required' : 'nullable', 'string', 'max:255'],
+            'motivo' => [$this->ajustada ? 'required' : 'nullable', 'string', 'max:255'],
             'observaciones' => ['nullable', 'string', 'max:1000'],
         ], [
             'motivo.required' => 'Indicá el motivo del ajuste de multa.',
@@ -103,11 +111,12 @@ class Index extends Component
             );
         } catch (ValidationException $e) {
             $this->addError('multaAplicada', $e->validator->errors()->first());
+
             return;
         }
 
         $this->modalProcesar = false;
-        session()->flash('success', 'Devolución procesada. Monto devuelto: ₲ ' . number_format($devolucion->monto_devuelto, 0, ',', '.'));
+        session()->flash('success', 'Devolución procesada. Monto devuelto: ₲ '.number_format($devolucion->monto_devuelto, 0, ',', '.'));
     }
 
     public function render()
@@ -115,15 +124,12 @@ class Index extends Component
         $multaDiaria = (int) (Configuracion::where('nombre', 'multa')->value('valor') ?? 10000);
 
         $alquileres = Alquiler::query()
-            ->with(['cliente', 'stockItems'])
+            ->with(['cliente', 'unidades.talleStock.stock'])
             ->activos()
             ->when($this->buscar, fn ($q) => $q->whereHas('cliente', fn ($c) => $c->where('nombre', 'like', "%{$this->buscar}%")))
             ->orderBy('fecha_fin')
             ->paginate(15);
 
-        $talleIds = $alquileres->flatMap(fn ($a) => $a->stockItems->pluck('pivot.talle_id'))->unique();
-        $tallesNombres = TalleStock::whereIn('id', $talleIds)->pluck('talle', 'id');
-
-        return view('livewire.devoluciones.index', compact('alquileres', 'tallesNombres', 'multaDiaria'));
+        return view('livewire.devoluciones.index', compact('alquileres', 'multaDiaria'));
     }
 }

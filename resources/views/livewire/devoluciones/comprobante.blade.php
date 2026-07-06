@@ -19,8 +19,8 @@
 
         <div class="mb-4">
             <h2 class="mb-2 text-sm font-semibold text-ink-500">Prendas devueltas</h2>
-            @foreach ($devolucion->alquiler->stockItems as $s)
-                <div class="text-sm text-ink-700">{{ $s->nombre }} <span class="text-ink-400">({{ $tallesNombres[$s->pivot->talle_id] ?? '—' }}) ×{{ $s->pivot->cantidad }}</span></div>
+            @foreach ($prendas as $p)
+                <div class="text-sm text-ink-700">{{ $p->nombre }} <span class="text-ink-400">({{ $p->talle }}) ×{{ $p->cantidad }}</span></div>
             @endforeach
         </div>
 

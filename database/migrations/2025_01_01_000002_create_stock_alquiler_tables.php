@@ -11,7 +11,7 @@ return new class extends Migration
     {
         Schema::create('stock_alquiler', function (Blueprint $table) {
             $table->id();
-            $table->string('codigo')->unique();
+            $table->string('codigo')->nullable()->unique(); // referencia manual; se autogenera si se deja vacío
             $table->string('nombre');
             $table->decimal('precio_alquiler', 14, 0);
             $table->text('descripcion')->nullable();
@@ -36,10 +36,22 @@ return new class extends Migration
         DB::statement('ALTER TABLE talle_stock ADD CONSTRAINT chk_talle_stock_no_negativo
             CHECK (cantidad_total >= 0 AND cantidad_disponible >= 0
                    AND cantidad_alquilada >= 0 AND cantidad_reservada >= 0)');
+
+        // Unidad física de alquiler (fuente de verdad de disponibilidad real; los contadores
+        // de arriba son una denormalización/caché que se sincroniza en las mismas transacciones).
+        Schema::create('unidad_stock', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('talle_stock_id')->constrained('talle_stock')->cascadeOnDelete();
+            $table->string('codigo')->nullable()->unique();
+            $table->string('estado', 20)->default('disponible')->index(); // disponible | alquilada | baja
+            $table->timestamps();
+            $table->softDeletes();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('unidad_stock');
         Schema::dropIfExists('talle_stock');
         Schema::dropIfExists('stock_alquiler');
     }

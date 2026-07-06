@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alquiler;
-use App\Models\TalleStock;
 use App\Models\Venta;
 use Illuminate\Support\Facades\App;
 
@@ -11,11 +10,11 @@ class FacturaController extends Controller
 {
     public function alquiler(Alquiler $alquiler)
     {
-        $alquiler->load('cliente', 'stockItems');
-        $tallesNombres = TalleStock::whereIn('id', $alquiler->stockItems->pluck('pivot.talle_id'))->pluck('talle', 'id');
+        $alquiler->load('cliente', 'unidades.talleStock.stock');
+        $prendas = $alquiler->prendasAgrupadas();
 
         $pdf = App::make('dompdf.wrapper');
-        $pdf->loadView('facturas.alquiler', compact('alquiler', 'tallesNombres'));
+        $pdf->loadView('facturas.alquiler', compact('alquiler', 'prendas'));
 
         return $pdf->stream("Factura_Alquiler_{$alquiler->id}.pdf");
     }

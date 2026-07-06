@@ -9,12 +9,18 @@
                 <span class="font-mono">{{ $item->codigo }}</span> · ₲ {{ number_format($item->precio_alquiler, 0, ',', '.') }} por alquiler
             </p>
         </div>
-        @can('editar-stock-alquiler')
-            <a href="{{ route('stock.alquiler.edit', $item) }}" wire:navigate
+        <div class="flex items-center gap-2">
+            <a href="{{ route('stock.alquiler.etiquetas', $item) }}" target="_blank"
                 class="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-                <i class="fa-solid fa-pen"></i> Editar
+                <i class="fa-solid fa-barcode"></i> Etiquetas
             </a>
-        @endcan
+            @can('editar-stock-alquiler')
+                <a href="{{ route('stock.alquiler.edit', $item) }}" wire:navigate
+                    class="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
+                    <i class="fa-solid fa-pen"></i> Editar
+                </a>
+            @endcan
+        </div>
     </div>
 
     @if ($item->descripcion)
@@ -51,6 +57,24 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    @php $estadoColorUnidad = ['disponible' => 'bg-green-100 text-green-700', 'alquilada' => 'bg-blue-100 text-blue-700', 'baja' => 'bg-ink-100 text-ink-500']; @endphp
+    <div class="mt-6 rounded-xl border border-ink-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-4 text-base font-semibold">Unidades físicas</h2>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @forelse ($item->talles->flatMap->unidades as $u)
+                <div class="flex items-center justify-between rounded-lg border border-ink-200 px-3 py-2 text-sm">
+                    <div>
+                        <div class="font-mono text-xs text-ink-500">{{ $u->codigo }}</div>
+                        <div class="text-ink-800">Talle {{ $u->talleStock->talle }}</div>
+                    </div>
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $estadoColorUnidad[$u->estado->value] }}">{{ $u->estado->label() }}</span>
+                </div>
+            @empty
+                <p class="text-sm text-ink-400">Sin unidades generadas.</p>
+            @endforelse
         </div>
     </div>
 </div>

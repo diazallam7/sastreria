@@ -6,8 +6,10 @@ use App\Models\Cliente;
 use App\Models\Producto;
 use App\Models\ProductoTalle;
 use App\Models\Venta;
+use App\Services\BarcodeService;
 use App\Services\VentaService;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -18,6 +20,7 @@ class Form extends Component
     public ?Venta $venta = null;
 
     public string $cliente_id = '';
+
     public string $fecha_venta = '';
 
     /** @var array<int, array{producto_talle_id:int, nombre:string, talle:string, precio:int, cantidad:int}> */
@@ -25,8 +28,15 @@ class Form extends Component
 
     // Selector de producto
     public string $productoSel = '';
+
     public string $talleSel = '';
+
     public int $cantidadSel = 1;
+
+    // Escaneo de código de barra
+    public string $codigoEscaneado = '';
+
+    public ?string $mensajeEscaneo = null;
 
     public function mount(?Venta $venta = null): void
     {
@@ -42,13 +52,19 @@ class Form extends Component
                 ->filter(fn ($d) => $d->producto_talle_id !== null)
                 ->map(fn ($d) => [
                     'producto_talle_id' => $d->producto_talle_id,
-                    'nombre'            => $d->nombre_producto,
-                    'talle'             => $d->talle,
-                    'precio'            => (int) $d->precio_unitario,
-                    'cantidad'          => $d->cantidad,
+                    'nombre' => $d->nombre_producto,
+                    'talle' => $d->talle,
+                    'precio' => (int) $d->precio_unitario,
+                    'cantidad' => $d->cantidad,
                 ])->values()->all();
         } else {
             abort_unless(auth()->user()->can('crear-venta'), 403);
+        }
+
+        if ($codigo = request()->query('scan')) {
+            $this->escanear($codigo);
+            // Limpia el query param para que un F5 no vuelva a agregar el mismo ítem.
+            $this->js('history.replaceState(null, "", window.location.pathname)');
         }
     }
 
@@ -68,7 +84,7 @@ class Form extends Component
     {
         $this->validate([
             'productoSel' => ['required', 'exists:productos,id'],
-            'talleSel'    => ['required', 'exists:producto_talles,id'],
+            'talleSel' => ['required', 'exists:producto_talles,id'],
             'cantidadSel' => ['required', 'integer', 'min:1'],
         ], attributes: ['productoSel' => 'producto', 'talleSel' => 'talle', 'cantidadSel' => 'cantidad']);
 
@@ -76,6 +92,7 @@ class Form extends Component
 
         if ((int) $talle->producto_id !== (int) $this->productoSel) {
             $this->addError('talleSel', 'El talle no corresponde al producto.');
+
             return;
         }
 
@@ -83,6 +100,7 @@ class Form extends Component
 
         if ($talle->cantidad_disponible < $enCarrito + $this->cantidadSel) {
             $this->addError('cantidadSel', "Stock insuficiente. Disponible: {$talle->cantidad_disponible}.");
+
             return;
         }
 
@@ -93,15 +111,77 @@ class Form extends Component
         } else {
             $this->items[] = [
                 'producto_talle_id' => $talle->id,
-                'nombre'            => $talle->producto->nombre,
-                'talle'             => $talle->talle,
-                'precio'            => (int) $talle->producto->precio_venta,
-                'cantidad'          => $this->cantidadSel,
+                'nombre' => $talle->producto->nombre,
+                'talle' => $talle->talle,
+                'precio' => (int) $talle->producto->precio_venta,
+                'cantidad' => $this->cantidadSel,
             ];
         }
 
         $this->reset('productoSel', 'talleSel');
         $this->cantidadSel = 1;
+    }
+
+    #[On('barcode-scanned')]
+    public function escanear(string $codigo): void
+    {
+        $this->resetErrorBag('escaneo');
+        $this->codigoEscaneado = '';
+        $this->mensajeEscaneo = null;
+
+        try {
+            $parsed = app(BarcodeService::class)->parsear($codigo);
+        } catch (InvalidArgumentException) {
+            $this->addError('escaneo', "Código no reconocido: {$codigo}");
+
+            return;
+        }
+
+        if ($parsed['tipo'] !== 'venta') {
+            $this->addError('escaneo', 'Ese código no corresponde a un producto de venta.');
+
+            return;
+        }
+
+        $talle = $parsed['ref_id']
+            ? ProductoTalle::with('producto')->find($parsed['ref_id'])
+            : ProductoTalle::with('producto')->porCodigo($parsed['raw'])->first();
+
+        if (! $talle || ! $talle->producto) {
+            $this->addError('escaneo', 'Producto no encontrado.');
+
+            return;
+        }
+
+        if (! $talle->producto->activo_para_venta) {
+            $this->addError('escaneo', 'Producto no disponible para venta.');
+
+            return;
+        }
+
+        $enCarrito = collect($this->items)->firstWhere('producto_talle_id', $talle->id)['cantidad'] ?? 0;
+
+        if ($talle->cantidad_disponible < $enCarrito + 1) {
+            $this->addError('escaneo', "Sin stock disponible para {$talle->producto->nombre} talle {$talle->talle}.");
+
+            return;
+        }
+
+        $indice = collect($this->items)->search(fn ($i) => $i['producto_talle_id'] === $talle->id);
+
+        if ($indice !== false) {
+            $this->items[$indice]['cantidad']++;
+        } else {
+            $this->items[] = [
+                'producto_talle_id' => $talle->id,
+                'nombre' => $talle->producto->nombre,
+                'talle' => $talle->talle,
+                'precio' => (int) $talle->producto->precio_venta,
+                'cantidad' => 1,
+            ];
+        }
+
+        $this->mensajeEscaneo = "Agregado: {$talle->producto->nombre} T:{$talle->talle}";
     }
 
     public function removeItem(int $index): void
@@ -118,12 +198,12 @@ class Form extends Component
     public function save(VentaService $service)
     {
         $this->validate([
-            'cliente_id'  => ['required', 'exists:clientes,id'],
+            'cliente_id' => ['required', 'exists:clientes,id'],
             'fecha_venta' => ['required', 'date'],
-            'items'       => ['required', 'array', 'min:1'],
+            'items' => ['required', 'array', 'min:1'],
         ], messages: [
             'items.required' => 'Agregá al menos un producto.',
-            'items.min'      => 'Agregá al menos un producto.',
+            'items.min' => 'Agregá al menos un producto.',
             'cliente_id.required' => 'Seleccioná un cliente.',
         ]);
 
@@ -138,6 +218,7 @@ class Form extends Component
                 : $service->crear($datos, $payload);
         } catch (ValidationException $e) {
             $this->addError('items', $e->validator->errors()->first());
+
             return;
         }
 

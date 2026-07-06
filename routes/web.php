@@ -1,17 +1,20 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\homeController;
+use App\Http\Controllers\CierreCajaController;
+use App\Http\Controllers\EtiquetaController;
+use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\loginController;
 use App\Http\Controllers\logoutController;
-use App\Http\Controllers\CierreCajaController;
-use App\Http\Controllers\ConfiguracionController;
-use App\Http\Controllers\profileController;
-use App\Http\Controllers\roleController;
-use App\Http\Controllers\userController;
-use App\Http\Controllers\GastoVarioController;
-use App\Http\Controllers\FacturaController;
+use App\Livewire\CierreCaja\Diario;
+use App\Livewire\CierreCaja\Mensual;
+use App\Livewire\CierreCaja\Semanal;
+use App\Livewire\Clientes\Show;
 use App\Livewire\Dashboard;
+use App\Livewire\Devoluciones\Comprobante;
+use App\Livewire\Devoluciones\Historial;
+use App\Livewire\Perfil\Index;
+use App\Livewire\Usuarios\Form;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,12 +38,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/', Dashboard::class)->name('panel');
 
-    Route::get('/perfil', App\Livewire\Perfil\Index::class)->name('profiles.index');
+    Route::get('/perfil', Index::class)->name('profiles.index');
 
     // Usuarios (Livewire)
     Route::get('/users', App\Livewire\Usuarios\Index::class)->name('users.index')->middleware('permission:ver-user');
-    Route::get('/users/crear', App\Livewire\Usuarios\Form::class)->name('users.create')->middleware('permission:crear-user');
-    Route::get('/users/{user}/editar', App\Livewire\Usuarios\Form::class)->name('users.edit')->middleware('permission:editar-user');
+    Route::get('/users/crear', Form::class)->name('users.create')->middleware('permission:crear-user');
+    Route::get('/users/{user}/editar', Form::class)->name('users.edit')->middleware('permission:editar-user');
 
     // Roles (Livewire)
     Route::get('/roles', App\Livewire\Roles\Index::class)->name('roles.index')->middleware('permission:ver-role');
@@ -52,7 +55,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', App\Livewire\Clientes\Index::class)->name('index')->middleware('permission:ver-cliente');
         Route::get('/crear', App\Livewire\Clientes\Form::class)->name('create')->middleware('permission:crear-cliente');
         Route::get('/{cliente}/editar', App\Livewire\Clientes\Form::class)->name('edit')->middleware('permission:editar-cliente');
-        Route::get('/{cliente}', App\Livewire\Clientes\Show::class)->name('show')->middleware('permission:ver-cliente');
+        Route::get('/{cliente}', Show::class)->name('show')->middleware('permission:ver-cliente');
     });
 
     // Configuraciones
@@ -72,6 +75,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/crear', App\Livewire\Productos\Form::class)->name('create')->middleware('permission:crear-producto');
         Route::get('/{producto}/editar', App\Livewire\Productos\Form::class)->name('edit')->middleware('permission:editar-producto');
         Route::get('/{producto}', App\Livewire\Productos\Show::class)->name('show')->middleware('permission:ver-producto');
+        Route::get('/{producto}/etiquetas', [EtiquetaController::class, 'producto'])->name('etiquetas')->middleware('permission:ver-producto');
     });
 
     // Reservas (Livewire)
@@ -98,15 +102,15 @@ Route::middleware('auth')->group(function () {
     // Devoluciones (Livewire)
     Route::prefix('devoluciones')->name('devoluciones.')->group(function () {
         Route::get('/', App\Livewire\Devoluciones\Index::class)->name('index')->middleware('permission:ver-devolucion');
-        Route::get('/historial', App\Livewire\Devoluciones\Historial::class)->name('historial')->middleware('permission:ver-devolucion');
-        Route::get('/comprobante/{devolucion}', App\Livewire\Devoluciones\Comprobante::class)->name('comprobante')->middleware('permission:ver-devolucion');
+        Route::get('/historial', Historial::class)->name('historial')->middleware('permission:ver-devolucion');
+        Route::get('/comprobante/{devolucion}', Comprobante::class)->name('comprobante')->middleware('permission:ver-devolucion');
     });
 
     // Cierre de caja (Livewire + PDF por controller)
     Route::prefix('cierre-caja')->name('cierre-caja.')->group(function () {
-        Route::get('/', App\Livewire\CierreCaja\Diario::class)->name('index')->middleware('permission:ver-cierre-caja');
-        Route::get('/semanal', App\Livewire\CierreCaja\Semanal::class)->name('semanal')->middleware('permission:ver-cierre-caja-semanal');
-        Route::get('/mensual', App\Livewire\CierreCaja\Mensual::class)->name('mensual')->middleware('permission:ver-cierre-caja-mensual');
+        Route::get('/', Diario::class)->name('index')->middleware('permission:ver-cierre-caja');
+        Route::get('/semanal', Semanal::class)->name('semanal')->middleware('permission:ver-cierre-caja-semanal');
+        Route::get('/mensual', Mensual::class)->name('mensual')->middleware('permission:ver-cierre-caja-mensual');
         Route::get('/pdf', [CierreCajaController::class, 'exportarPDF'])->name('pdf');
         Route::get('/semanal/pdf', [CierreCajaController::class, 'exportarPDFSemanal'])->name('semanal.pdf');
         Route::get('/mensual/pdf', [CierreCajaController::class, 'exportarPDFMensual'])->name('mensual.pdf');
@@ -122,6 +126,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/crear', App\Livewire\StockAlquiler\Form::class)->name('create')->middleware('permission:crear-stock-alquiler');
             Route::get('/{item}/editar', App\Livewire\StockAlquiler\Form::class)->name('edit')->middleware('permission:editar-stock-alquiler');
             Route::get('/{item}', App\Livewire\StockAlquiler\Show::class)->name('show')->middleware('permission:ver-stock-alquiler');
+            Route::get('/{item}/etiquetas', [EtiquetaController::class, 'stockAlquiler'])->name('etiquetas')->middleware('permission:ver-stock-alquiler');
         });
     });
 

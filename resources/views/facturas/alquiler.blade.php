@@ -32,12 +32,12 @@
             <tr><th>Prenda</th><th>Código</th><th>Talle</th><th class="r">Cantidad</th></tr>
         </thead>
         <tbody>
-            @foreach ($alquiler->stockItems as $s)
+            @foreach ($prendas as $p)
                 <tr>
-                    <td>{{ $s->nombre }}</td>
-                    <td>{{ $s->codigo }}</td>
-                    <td>{{ $tallesNombres[$s->pivot->talle_id] ?? '—' }}</td>
-                    <td class="r">{{ $s->pivot->cantidad }}</td>
+                    <td>{{ $p->nombre }}</td>
+                    <td>{{ $p->codigo }}</td>
+                    <td>{{ $p->talle }}</td>
+                    <td class="r">{{ $p->cantidad }}</td>
                 </tr>
             @endforeach
         </tbody>

@@ -81,12 +81,18 @@
                                 class="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400">
                             @error('talles.'.$i.'.cantidad') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
+                        <div class="w-40">
+                            <input type="text" wire:model="talles.{{ $i }}.codigo_barra" placeholder="Código / EAN"
+                                class="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400">
+                            @error('talles.'.$i.'.codigo_barra') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
                         <button type="button" wire:click="removeTalle({{ $i }})" data-tip="Quitar"
                             class="rounded-lg p-2.5 text-ink-400 hover:bg-red-50 hover:text-red-600">
                             <i class="fa-solid fa-trash text-sm"></i>
                         </button>
                     </div>
                 @endforeach
+                <p class="text-xs text-ink-400">Dejá el código vacío para que se genere automático. Solo cargalo si el producto ya trae un EAN de fábrica.</p>
             </div>
         </div>
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\EstadoAlquiler;
 use App\Enums\EstadoReserva;
+use App\Enums\EstadoUnidad;
 use App\Livewire\Reservas\Form;
 use App\Livewire\Reservas\Index;
 use App\Livewire\Reservas\Show;
@@ -13,6 +14,7 @@ use App\Models\Reserva;
 use App\Models\StockAlquiler;
 use App\Models\TalleStock;
 use App\Services\ReservaService;
+use App\Services\StockAlquilerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -23,11 +25,13 @@ class ReservaModuleTest extends TestCase
 
     private function prendaConStock(int $disp = 5): TalleStock
     {
-        $item = StockAlquiler::create(['codigo' => 'P' . uniqid(), 'nombre' => 'Prenda', 'precio_alquiler' => 50000]);
+        $item = app(StockAlquilerService::class)->guardar(
+            new StockAlquiler,
+            ['codigo' => 'P'.uniqid(), 'nombre' => 'Prenda', 'precio_alquiler' => 50000],
+            [['id' => null, 'talle' => 'M', 'cantidad' => $disp]],
+        );
 
-        return $item->talles()->create([
-            'talle' => 'M', 'cantidad_total' => $disp, 'cantidad_disponible' => $disp, 'cantidad_reservada' => 0,
-        ]);
+        return $item->talles()->first();
     }
 
     private function reservaConfirmada(TalleStock $talle, int $cantidad = 2): Reserva
@@ -115,6 +119,24 @@ class ReservaModuleTest extends TestCase
         $talle->refresh();
         $this->assertSame(0, $talle->cantidad_reservada);
         $this->assertSame(2, $talle->cantidad_alquilada);
+    }
+
+    public function test_convertir_asigna_unidad_fisica(): void
+    {
+        $talle = $this->prendaConStock(5);
+        $reserva = $this->reservaConfirmada($talle, 2);
+
+        Livewire::actingAs($this->usuarioCon(['editar-reserva']))
+            ->test(Show::class, ['reserva' => $reserva])
+            ->call('abrirConvertir')
+            ->set('fechaEntrega', now()->toDateString())
+            ->set('fechaDevolucion', now()->addDays(3)->toDateString())
+            ->call('convertir');
+
+        $alquiler = Alquiler::find($reserva->refresh()->alquiler_id);
+
+        $this->assertCount(2, $alquiler->unidades);
+        $this->assertTrue($alquiler->unidades->every(fn ($u) => $u->estado === EstadoUnidad::Alquilada));
     }
 
     public function test_convertir_desde_el_listado(): void

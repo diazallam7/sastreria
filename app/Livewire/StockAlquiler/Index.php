@@ -2,6 +2,7 @@
 
 namespace App\Livewire\StockAlquiler;
 
+use App\Enums\EstadoUnidad;
 use App\Models\StockAlquiler;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -27,8 +28,9 @@ class Index extends Component
     {
         abort_unless(auth()->user()->can('eliminar-stock-alquiler'), 403);
 
-        if ($item->alquileres()->where('alquileres.estado', 'activo')->exists()) {
+        if ($item->talles()->whereHas('unidades', fn ($q) => $q->where('estado', EstadoUnidad::Alquilada->value))->exists()) {
             session()->flash('error', 'No se puede eliminar: la prenda está en un alquiler activo.');
+
             return;
         }
 

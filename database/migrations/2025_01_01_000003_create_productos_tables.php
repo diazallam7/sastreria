@@ -29,6 +29,7 @@ return new class extends Migration
             $table->integer('cantidad_total')->default(0);
             $table->integer('cantidad_disponible')->default(0);
             $table->integer('cantidad_vendida')->default(0);
+            $table->string('codigo_barra')->nullable()->unique(); // PRD-nnnnnnn generado o EAN de fábrica
             $table->timestamps();
 
             $table->unique(['producto_id', 'talle']);

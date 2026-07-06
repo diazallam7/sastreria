@@ -13,7 +13,7 @@ class Show extends Component
 
     public function mount(StockAlquiler $item): void
     {
-        $this->item = $item->load('talles');
+        $this->item = $item->load('talles.unidades');
     }
 
     public function render()

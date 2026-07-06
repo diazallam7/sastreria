@@ -12,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class ReservaService
 {
+    public function __construct(private AlquilerService $alquilerService) {}
+
     /**
      * @param  array<string, mixed>  $datos
      * @param  array<int, array{stock_id:int, talle_id:int, cantidad:int}>  $prendas
@@ -21,7 +23,7 @@ class ReservaService
         return DB::transaction(function () use ($datos, $prendas) {
             $reserva = Reserva::create(array_merge($datos, [
                 'user_id' => auth()->id(),
-                'estado'  => EstadoReserva::Confirmada,
+                'estado' => EstadoReserva::Confirmada,
             ]));
 
             $this->reservarPrendas($reserva, $prendas);
@@ -66,38 +68,26 @@ class ReservaService
             }
 
             $alquiler = Alquiler::create([
-                'cliente_id'   => $reserva->cliente_id,
+                'cliente_id' => $reserva->cliente_id,
                 'fecha_inicio' => $fechaEntrega,
-                'fecha_fin'    => $fechaDevolucion,
-                'costo_total'  => $reserva->monto_total,
-                'garantia'     => $reserva->garantia_total,
-                'estado'       => EstadoAlquiler::Activo,
+                'fecha_fin' => $fechaDevolucion,
+                'costo_total' => $reserva->monto_total,
+                'garantia' => $reserva->garantia_total,
+                'estado' => EstadoAlquiler::Activo,
             ]);
 
             foreach ($items as $item) {
-                $talle = TalleStock::whereKey($item->pivot->talle_id)->lockForUpdate()->firstOrFail();
-
-                if ($talle->cantidad_reservada < $item->pivot->cantidad) {
-                    throw ValidationException::withMessages(['reserva' => "Stock reservado insuficiente para el talle {$talle->talle}."]);
-                }
-
-                $alquiler->stockItems()->attach($item->id, [
-                    'talle_id' => $item->pivot->talle_id,
-                    'cantidad' => $item->pivot->cantidad,
-                ]);
-
-                $talle->decrement('cantidad_reservada', $item->pivot->cantidad);
-                $talle->increment('cantidad_alquilada', $item->pivot->cantidad);
+                $this->alquilerService->asignarUnidades($alquiler, $item->pivot->talle_id, $item->pivot->cantidad, origen: 'reservado');
             }
 
             $observaciones = $reserva->observaciones;
             if (! empty($observacionesEntrega)) {
-                $observaciones .= "\n\nEntrega: " . $observacionesEntrega;
+                $observaciones .= "\n\nEntrega: ".$observacionesEntrega;
             }
 
             $reserva->update([
-                'estado'        => EstadoReserva::Entregada,
-                'alquiler_id'   => $alquiler->id,
+                'estado' => EstadoReserva::Entregada,
+                'alquiler_id' => $alquiler->id,
                 'observaciones' => $observaciones,
             ]);
 
@@ -120,14 +110,14 @@ class ReservaService
 
             $observaciones = $reserva->observaciones;
             if (! empty($observacionesCancelacion)) {
-                $observaciones .= "\n\nCancelación: " . $observacionesCancelacion;
+                $observaciones .= "\n\nCancelación: ".$observacionesCancelacion;
             }
 
             $reserva->update([
-                'estado'            => EstadoReserva::Cancelada,
-                'senia_devuelta'    => $seniaDevuelta,
+                'estado' => EstadoReserva::Cancelada,
+                'senia_devuelta' => $seniaDevuelta,
                 'motivo_devolucion' => $motivo,
-                'observaciones'     => $observaciones,
+                'observaciones' => $observaciones,
             ]);
         });
     }

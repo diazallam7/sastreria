@@ -56,12 +56,12 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-ink-50">
-                        @forelse ($alquiler->stockItems as $s)
+                        @forelse ($prendas as $p)
                             <tr>
-                                <td class="py-2 pr-4 font-medium text-ink-800">{{ $s->nombre }}</td>
-                                <td class="py-2 pr-4 font-mono text-xs text-ink-500">{{ $s->codigo }}</td>
-                                <td class="py-2 pr-4 text-ink-600">{{ $tallesNombres[$s->pivot->talle_id] ?? '—' }}</td>
-                                <td class="py-2 text-right tabular-nums">{{ $s->pivot->cantidad }}</td>
+                                <td class="py-2 pr-4 font-medium text-ink-800">{{ $p->nombre }}</td>
+                                <td class="py-2 pr-4 font-mono text-xs text-ink-500">{{ $p->codigo }}</td>
+                                <td class="py-2 pr-4 text-ink-600">{{ $p->talle }}</td>
+                                <td class="py-2 text-right tabular-nums">{{ $p->cantidad }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="py-6 text-center text-ink-400">Sin prendas.</td></tr>

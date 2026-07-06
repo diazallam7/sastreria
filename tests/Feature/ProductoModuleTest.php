@@ -53,6 +53,74 @@ class ProductoModuleTest extends TestCase
         $this->assertSame(10, $p->talles->firstWhere('talle', 'M')->cantidad_disponible);
     }
 
+    public function test_crear_producto_asigna_codigo_barra_generado(): void
+    {
+        Livewire::actingAs($this->usuarioCon(['crear-producto']))
+            ->test(Form::class)
+            ->set('nombre', 'Remera')
+            ->set('tipo', 'fabricado')
+            ->set('precio_venta', 20000)
+            ->set('talles', [
+                ['id' => null, 'talle' => 'M', 'cantidad' => 5],
+                ['id' => null, 'talle' => 'L', 'cantidad' => 5],
+            ])
+            ->call('save')
+            ->assertRedirect(route('productos.index'));
+
+        $p = Producto::firstWhere('nombre', 'Remera');
+        $codigos = $p->talles->pluck('codigo_barra');
+
+        $this->assertCount(2, $codigos->unique());
+        $codigos->each(fn ($c) => $this->assertMatchesRegularExpression('/^PRD-\d{7}$/', $c));
+    }
+
+    public function test_crear_producto_comprado_con_ean_manual_respeta_el_codigo(): void
+    {
+        Livewire::actingAs($this->usuarioCon(['crear-producto']))
+            ->test(Form::class)
+            ->set('nombre', 'Pantalón')
+            ->set('tipo', 'comprado')
+            ->set('precio_venta', 50000)
+            ->set('precio_compra', 30000)
+            ->set('fecha_compra', '2026-07-01')
+            ->set('talles', [
+                ['id' => null, 'talle' => 'M', 'cantidad' => 3, 'codigo_barra' => '5901234123457'],
+            ])
+            ->call('save')
+            ->assertRedirect(route('productos.index'));
+
+        $p = Producto::firstWhere('nombre', 'Pantalón');
+        $this->assertSame('5901234123457', $p->talles->first()->codigo_barra);
+    }
+
+    public function test_codigo_barra_duplicado_falla_validacion(): void
+    {
+        $existente = Producto::create(['nombre' => 'Otro', 'tipo' => 'fabricado', 'precio_venta' => 1000]);
+        $existente->talles()->create(['talle' => 'M', 'cantidad_total' => 1, 'cantidad_disponible' => 1, 'codigo_barra' => '5901234123457']);
+
+        Livewire::actingAs($this->usuarioCon(['crear-producto']))
+            ->test(Form::class)
+            ->set('nombre', 'Nuevo')
+            ->set('tipo', 'fabricado')
+            ->set('precio_venta', 1000)
+            ->set('talles', [
+                ['id' => null, 'talle' => 'M', 'cantidad' => 1, 'codigo_barra' => '5901234123457'],
+            ])
+            ->call('save')
+            ->assertHasErrors(['talles.0.codigo_barra' => 'unique']);
+    }
+
+    public function test_ruta_etiquetas_responde_pdf(): void
+    {
+        $producto = Producto::create(['nombre' => 'Con etiquetas', 'tipo' => 'fabricado', 'precio_venta' => 1000]);
+        $producto->talles()->create(['talle' => 'M', 'cantidad_total' => 1, 'cantidad_disponible' => 1, 'codigo_barra' => 'PRD-0000099']);
+
+        $this->actingAs($this->usuarioCon(['ver-producto']))
+            ->get(route('productos.etiquetas', $producto))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
     public function test_fabricado_ignora_costo(): void
     {
         Livewire::actingAs($this->usuarioCon(['crear-producto']))

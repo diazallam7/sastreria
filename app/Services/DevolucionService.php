@@ -6,13 +6,14 @@ use App\Enums\EstadoAlquiler;
 use App\Models\Alquiler;
 use App\Models\Configuracion;
 use App\Models\Devolucion;
-use App\Models\TalleStock;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class DevolucionService
 {
+    public function __construct(private AlquilerService $alquilerService) {}
+
     /**
      * Calcula (sin persistir) la multa y el monto a devolver de un alquiler.
      *
@@ -23,18 +24,18 @@ class DevolucionService
         $multaDiaria = (int) (Configuracion::where('nombre', 'multa')->value('valor') ?? 10000);
 
         $fechaFin = Carbon::parse($alquiler->fecha_fin)->startOfDay();
-        $hoy      = Carbon::now()->startOfDay();
-        $dias     = $hoy->gt($fechaFin) ? $fechaFin->diffInDays($hoy) : 0;
+        $hoy = Carbon::now()->startOfDay();
+        $dias = $hoy->gt($fechaFin) ? $fechaFin->diffInDays($hoy) : 0;
 
         $multaCalculada = $dias * $multaDiaria;
-        $garantia       = (int) $alquiler->garantia;
+        $garantia = (int) $alquiler->garantia;
 
         return [
-            'multa_diaria'      => $multaDiaria,
-            'dias_retraso'      => $dias,
-            'multa_calculada'   => $multaCalculada,
+            'multa_diaria' => $multaDiaria,
+            'dias_retraso' => $dias,
+            'multa_calculada' => $multaCalculada,
             'garantia_original' => $garantia,
-            'monto_devuelto'    => max(0, $garantia - $multaCalculada),
+            'monto_devuelto' => max(0, $garantia - $multaCalculada),
         ];
     }
 
@@ -65,29 +66,24 @@ class DevolucionService
                 ]);
             }
 
-            $calc     = $this->calcular($alquiler);
+            $calc = $this->calcular($alquiler);
             $aplicada = $multaAplicada ?? $calc['multa_calculada'];
 
             $devolucion = Devolucion::create([
-                'alquiler_id'       => $alquiler->id,
-                'user_id'           => auth()->id(),
-                'fecha_devolucion'  => now(),
-                'retraso'           => $calc['dias_retraso'] > 0,
-                'dias_retraso'      => $calc['dias_retraso'],
-                'multa_calculada'   => $calc['multa_calculada'],
-                'multa_aplicada'    => $aplicada,
+                'alquiler_id' => $alquiler->id,
+                'user_id' => auth()->id(),
+                'fecha_devolucion' => now(),
+                'retraso' => $calc['dias_retraso'] > 0,
+                'dias_retraso' => $calc['dias_retraso'],
+                'multa_calculada' => $calc['multa_calculada'],
+                'multa_aplicada' => $aplicada,
                 'garantia_original' => $calc['garantia_original'],
-                'monto_devuelto'    => max(0, $calc['garantia_original'] - $aplicada),
-                'motivo_ajuste'     => $motivoAjuste,
-                'observaciones'     => $observaciones,
+                'monto_devuelto' => max(0, $calc['garantia_original'] - $aplicada),
+                'motivo_ajuste' => $motivoAjuste,
+                'observaciones' => $observaciones,
             ]);
 
-            foreach ($alquiler->stockItems()->withPivot('talle_id', 'cantidad')->get() as $item) {
-                $talle = TalleStock::whereKey($item->pivot->talle_id)->lockForUpdate()->first();
-
-                $talle?->increment('cantidad_disponible', $item->pivot->cantidad);
-                $talle?->decrement('cantidad_alquilada', $item->pivot->cantidad);
-            }
+            $this->alquilerService->liberarUnidades($alquiler);
 
             $alquiler->update(['estado' => EstadoAlquiler::Completado]);
 

@@ -10,6 +10,16 @@
         {{-- Izquierda: selector + carrito --}}
         <div class="space-y-6 lg:col-span-2">
             <div class="rounded-xl border border-ink-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-2 text-base font-semibold">Escanear código</h2>
+                <input type="text" wire:model="codigoEscaneado" placeholder="Escaneá o tipeá el código y presioná Enter"
+                    wire:keydown.enter="escanear($event.target.value)"
+                    class="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+                    autofocus>
+                @error('escaneo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                @if ($mensajeEscaneo) <p class="mt-1 text-xs text-green-600">{{ $mensajeEscaneo }}</p> @endif
+            </div>
+
+            <div class="rounded-xl border border-ink-200 bg-white p-6 shadow-sm">
                 <h2 class="mb-4 text-base font-semibold">Agregar producto</h2>
                 <div class="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
                     <div>

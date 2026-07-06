@@ -3,7 +3,6 @@
 namespace App\Livewire\Devoluciones;
 
 use App\Models\Devolucion;
-use App\Models\TalleStock;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -14,14 +13,13 @@ class Comprobante extends Component
 
     public function mount(Devolucion $devolucion): void
     {
-        $this->devolucion = $devolucion->load('alquiler.cliente', 'alquiler.stockItems', 'user');
+        $this->devolucion = $devolucion->load('alquiler.cliente', 'alquiler.unidades.talleStock.stock', 'user');
     }
 
     public function render()
     {
-        $tallesNombres = TalleStock::whereIn('id', $this->devolucion->alquiler->stockItems->pluck('pivot.talle_id'))
-            ->pluck('talle', 'id');
+        $prendas = $this->devolucion->alquiler->prendasAgrupadas();
 
-        return view('livewire.devoluciones.comprobante', compact('tallesNombres'));
+        return view('livewire.devoluciones.comprobante', compact('prendas'));
     }
 }

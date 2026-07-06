@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Alquiler extends Model
 {
@@ -28,10 +29,10 @@ class Alquiler extends Model
 
     protected $casts = [
         'fecha_inicio' => 'date',
-        'fecha_fin'    => 'date',
-        'costo_total'  => 'integer',
-        'garantia'     => 'integer',
-        'estado'       => EstadoAlquiler::class,
+        'fecha_fin' => 'date',
+        'costo_total' => 'integer',
+        'garantia' => 'integer',
+        'estado' => EstadoAlquiler::class,
     ];
 
     public function cliente(): BelongsTo
@@ -39,11 +40,38 @@ class Alquiler extends Model
         return $this->belongsTo(Cliente::class);
     }
 
-    public function stockItems(): BelongsToMany
+    public function unidades(): BelongsToMany
     {
-        return $this->belongsToMany(StockAlquiler::class, 'alquiler_stock', 'alquiler_id', 'stock_id')
-            ->withPivot('talle_id', 'cantidad')
+        return $this->belongsToMany(UnidadStock::class, 'alquiler_unidad', 'alquiler_id', 'unidad_id')
+            ->withPivot('precio')
             ->withTimestamps();
+    }
+
+    /**
+     * Agrupa las unidades por talle (compatibilidad con la UI, que muestra
+     * "prenda × talle × cantidad" en vez de listar cada unidad física una por una).
+     * Requiere `unidades.talleStock.stock` cargado para evitar N+1.
+     *
+     * @return Collection<int, object{stock_id:int,nombre:string,codigo:string,talle_id:int,talle:string,cantidad:int,precio:int}>
+     */
+    public function prendasAgrupadas(): Collection
+    {
+        return $this->unidades
+            ->groupBy('talle_stock_id')
+            ->map(function (Collection $grupo) {
+                $talle = $grupo->first()->talleStock;
+
+                return (object) [
+                    'stock_id' => $talle->stock_id,
+                    'nombre' => $talle->stock->nombre,
+                    'codigo' => $talle->stock->codigo,
+                    'talle_id' => $talle->id,
+                    'talle' => $talle->talle,
+                    'cantidad' => $grupo->count(),
+                    'precio' => (int) $grupo->first()->pivot->precio,
+                ];
+            })
+            ->values();
     }
 
     public function reserva(): HasOne

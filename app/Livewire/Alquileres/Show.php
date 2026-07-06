@@ -3,7 +3,6 @@
 namespace App\Livewire\Alquileres;
 
 use App\Models\Alquiler;
-use App\Models\TalleStock;
 use App\Services\DevolucionService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -16,7 +15,7 @@ class Show extends Component
 
     public function mount(Alquiler $alquiler): void
     {
-        $this->alquiler = $alquiler->load('cliente', 'stockItems');
+        $this->alquiler = $alquiler->load('cliente', 'unidades.talleStock.stock');
     }
 
     public function devolver(DevolucionService $service): void
@@ -27,6 +26,7 @@ class Show extends Component
             $service->procesar($this->alquiler);
         } catch (ValidationException $e) {
             session()->flash('error', $e->validator->errors()->first());
+
             return;
         }
 
@@ -36,10 +36,8 @@ class Show extends Component
 
     public function render()
     {
-        // Nombre del talle por cada pivot (para mostrar).
-        $tallesNombres = TalleStock::whereIn('id', $this->alquiler->stockItems->pluck('pivot.talle_id'))
-            ->pluck('talle', 'id');
+        $prendas = $this->alquiler->prendasAgrupadas();
 
-        return view('livewire.alquileres.show', compact('tallesNombres'));
+        return view('livewire.alquileres.show', compact('prendas'));
     }
 }

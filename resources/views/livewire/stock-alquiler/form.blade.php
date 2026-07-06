@@ -11,8 +11,9 @@
             <h2 class="mb-4 text-base font-semibold">Datos de la prenda</h2>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-ink-700">Código <span class="text-red-500">*</span></label>
-                    <input type="text" wire:model="codigo" class="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400">
+                    <label class="mb-1 block text-sm font-medium text-ink-700">Código</label>
+                    <input type="text" wire:model="codigo" placeholder="Se genera automático si lo dejás vacío"
+                        class="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400">
                     @error('codigo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>

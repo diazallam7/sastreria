@@ -3,7 +3,6 @@
 namespace App\Livewire\Alquileres;
 
 use App\Models\Alquiler;
-use App\Models\TalleStock;
 use App\Services\AlquilerService;
 use App\Services\DevolucionService;
 use Illuminate\Validation\ValidationException;
@@ -35,6 +34,7 @@ class Index extends Component
             $service->procesar($alquiler);
         } catch (ValidationException $e) {
             session()->flash('error', $e->validator->errors()->first());
+
             return;
         }
 
@@ -52,14 +52,11 @@ class Index extends Component
     public function render()
     {
         $alquileres = Alquiler::query()
-            ->with(['cliente', 'stockItems'])
+            ->with(['cliente', 'unidades.talleStock.stock'])
             ->when($this->buscar, fn ($q) => $q->whereHas('cliente', fn ($c) => $c->where('nombre', 'like', "%{$this->buscar}%")))
             ->latest()
             ->paginate(15);
 
-        $talleIds = $alquileres->flatMap(fn ($a) => $a->stockItems->pluck('pivot.talle_id'))->unique();
-        $tallesNombres = TalleStock::whereIn('id', $talleIds)->pluck('talle', 'id');
-
-        return view('livewire.alquileres.index', compact('alquileres', 'tallesNombres'));
+        return view('livewire.alquileres.index', compact('alquileres'));
     }
 }

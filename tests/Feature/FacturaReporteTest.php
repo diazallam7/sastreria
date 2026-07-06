@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Enums\EstadoAlquiler;
 use App\Livewire\Reportes\Index as ReportesIndex;
-use App\Models\Alquiler;
 use App\Models\Cliente;
 use App\Models\StockAlquiler;
 use App\Models\User;
 use App\Models\Venta;
+use App\Services\AlquilerService;
+use App\Services\StockAlquilerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -31,13 +31,17 @@ class FacturaReporteTest extends TestCase
 
     public function test_factura_alquiler_genera_pdf(): void
     {
-        $item = StockAlquiler::create(['codigo' => 'A1', 'nombre' => 'Saco', 'precio_alquiler' => 50000]);
-        $talle = $item->talles()->create(['talle' => 'M', 'cantidad_total' => 1, 'cantidad_disponible' => 0, 'cantidad_alquilada' => 1]);
-        $alquiler = Alquiler::create([
+        $item = app(StockAlquilerService::class)->guardar(
+            new StockAlquiler,
+            ['codigo' => 'A1', 'nombre' => 'Saco', 'precio_alquiler' => 50000],
+            [['id' => null, 'talle' => 'M', 'cantidad' => 1]],
+        );
+        $talle = $item->talles()->first();
+
+        $alquiler = app(AlquilerService::class)->crear([
             'cliente_id' => Cliente::create(['nombre' => 'C'])->id, 'fecha_inicio' => now(), 'fecha_fin' => now()->addDays(2),
-            'costo_total' => 80000, 'garantia' => 200000, 'estado' => EstadoAlquiler::Activo,
-        ]);
-        $alquiler->stockItems()->attach($item->id, ['talle_id' => $talle->id, 'cantidad' => 1]);
+            'costo_total' => 80000, 'garantia' => 200000,
+        ], [['stock_id' => $item->id, 'talle_id' => $talle->id, 'cantidad' => 1]]);
 
         $resp = $this->actingAs(User::factory()->create())->get(route('factura.alquiler', $alquiler));
 

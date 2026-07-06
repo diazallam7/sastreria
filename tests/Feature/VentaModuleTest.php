@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\Producto;
 use App\Models\ProductoTalle;
 use App\Models\Venta;
+use App\Services\BarcodeService;
 use App\Services\VentaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -27,6 +28,14 @@ class VentaModuleTest extends TestCase
         return $producto->talles()->create([
             'talle' => 'M', 'cantidad_total' => $stock, 'cantidad_disponible' => $stock,
         ]);
+    }
+
+    private function productoConCodigo(int $precio = 100000, int $stock = 10): ProductoTalle
+    {
+        $talle = $this->productoConStock($precio, $stock);
+        $talle->update(['codigo_barra' => app(BarcodeService::class)->generarCodigoVenta($talle->id)]);
+
+        return $talle->refresh();
     }
 
     public function test_invitado_es_redirigido_al_login(): void
@@ -105,6 +114,65 @@ class VentaModuleTest extends TestCase
             ->test(Form::class)
             ->call('seleccionarCliente', $cliente->id)
             ->assertSet('cliente_id', (string) $cliente->id);
+    }
+
+    public function test_escanear_codigo_prd_agrega_item_al_carrito(): void
+    {
+        $talle = $this->productoConCodigo(precio: 50000, stock: 5);
+
+        Livewire::actingAs($this->usuarioCon(['crear-venta']))
+            ->test(Form::class)
+            ->call('escanear', $talle->codigo_barra)
+            ->assertHasNoErrors()
+            ->assertCount('items', 1)
+            ->assertSet('items.0.producto_talle_id', $talle->id)
+            ->assertSet('items.0.cantidad', 1);
+    }
+
+    public function test_escanear_dos_veces_incrementa_cantidad(): void
+    {
+        $talle = $this->productoConCodigo(precio: 50000, stock: 5);
+
+        Livewire::actingAs($this->usuarioCon(['crear-venta']))
+            ->test(Form::class)
+            ->call('escanear', $talle->codigo_barra)
+            ->call('escanear', $talle->codigo_barra)
+            ->assertCount('items', 1)
+            ->assertSet('items.0.cantidad', 2);
+    }
+
+    public function test_escanear_codigo_no_reconocido_agrega_error(): void
+    {
+        Livewire::actingAs($this->usuarioCon(['crear-venta']))
+            ->test(Form::class)
+            ->call('escanear', 'XYZ-basura')
+            ->assertHasErrors('escaneo')
+            ->assertCount('items', 0);
+    }
+
+    public function test_query_param_scan_agrega_item_al_montar(): void
+    {
+        $talle = $this->productoConCodigo(precio: 30000, stock: 3);
+
+        Livewire::withQueryParams(['scan' => $talle->codigo_barra])
+            ->actingAs($this->usuarioCon(['crear-venta']))
+            ->test(Form::class)
+            ->assertHasNoErrors()
+            ->assertCount('items', 1)
+            ->assertSet('items.0.producto_talle_id', $talle->id);
+    }
+
+    public function test_escanear_sin_stock_agrega_error(): void
+    {
+        $talle = $this->productoConCodigo(precio: 50000, stock: 1);
+
+        Livewire::actingAs($this->usuarioCon(['crear-venta']))
+            ->test(Form::class)
+            ->call('escanear', $talle->codigo_barra)
+            ->call('escanear', $talle->codigo_barra)
+            ->assertHasErrors('escaneo')
+            ->assertCount('items', 1)
+            ->assertSet('items.0.cantidad', 1);
     }
 
     public function test_anular_restaura_stock_y_soft_delete(): void

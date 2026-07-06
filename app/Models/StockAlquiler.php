@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -29,12 +28,6 @@ class StockAlquiler extends Model
     public function talles(): HasMany
     {
         return $this->hasMany(TalleStock::class, 'stock_id');
-    }
-
-    public function alquileres(): BelongsToMany
-    {
-        return $this->belongsToMany(Alquiler::class, 'alquiler_stock', 'stock_id', 'alquiler_id')
-            ->withPivot('talle_id', 'cantidad');
     }
 
     /* ------------------------------- Scopes ------------------------------- */

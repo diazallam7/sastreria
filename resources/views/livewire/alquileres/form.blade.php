@@ -45,6 +45,13 @@
         {{-- Prendas --}}
         <div class="rounded-xl border border-ink-200 bg-white shadow-sm">
             <div class="border-b border-ink-100 p-6">
+                <h2 class="mb-2 text-base font-semibold">Escanear unidad</h2>
+                <input type="text" wire:model="codigoEscaneado" placeholder="Escaneá el código ALQ- de la prenda y presioná Enter"
+                    wire:keydown.enter="escanear($event.target.value)"
+                    class="mb-4 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400">
+                @error('escaneo') <p class="-mt-3 mb-4 text-xs text-red-600">{{ $message }}</p> @enderror
+                @if ($mensajeEscaneo) <p class="-mt-3 mb-4 text-xs text-green-600">{{ $mensajeEscaneo }}</p> @endif
+
                 <h2 class="mb-4 text-base font-semibold">Prendas</h2>
                 <div class="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
                     <div>
@@ -98,7 +105,12 @@
                                 <td class="px-6 py-3 font-medium text-ink-900">{{ $p['nombre'] }}</td>
                                 <td class="px-4 py-3 text-ink-600">{{ $p['talle'] }}</td>
                                 <td class="px-4 py-3 text-right tabular-nums">₲ {{ number_format($p['precio'], 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-right tabular-nums">{{ $p['cantidad'] }}</td>
+                                <td class="px-4 py-3 text-right tabular-nums">
+                                    {{ $p['cantidad'] }}
+                                    @if (! empty($p['unidad_ids']))
+                                        <span class="ml-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">{{ count($p['unidad_ids']) }} esc.</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 text-right font-medium tabular-nums">₲ {{ number_format($p['precio'] * $p['cantidad'], 0, ',', '.') }}</td>
                                 <td class="px-6 py-3 text-right">
                                     <button type="button" wire:click="removePrenda({{ $i }})" class="rounded p-1.5 text-ink-400 hover:bg-red-50 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>

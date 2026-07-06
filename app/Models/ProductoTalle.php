@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,12 +17,13 @@ class ProductoTalle extends Model
         'cantidad_total',
         'cantidad_disponible',
         'cantidad_vendida',
+        'codigo_barra',
     ];
 
     protected $casts = [
-        'cantidad_total'      => 'integer',
+        'cantidad_total' => 'integer',
         'cantidad_disponible' => 'integer',
-        'cantidad_vendida'    => 'integer',
+        'cantidad_vendida' => 'integer',
     ];
 
     public function producto(): BelongsTo
@@ -32,5 +34,10 @@ class ProductoTalle extends Model
     public function detallesVenta(): HasMany
     {
         return $this->hasMany(DetalleVenta::class);
+    }
+
+    public function scopePorCodigo(Builder $query, string $codigo): Builder
+    {
+        return $query->where('codigo_barra', $codigo);
     }
 }

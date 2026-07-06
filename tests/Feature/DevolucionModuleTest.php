@@ -11,6 +11,8 @@ use App\Models\Configuracion;
 use App\Models\Devolucion;
 use App\Models\StockAlquiler;
 use App\Models\TalleStock;
+use App\Services\AlquilerService;
+use App\Services\StockAlquilerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -22,20 +24,22 @@ class DevolucionModuleTest extends TestCase
     /** @return array{0: Alquiler, 1: TalleStock} */
     private function alquilerActivo(int $garantia = 200000, ?string $fechaFin = null, ?Cliente $cliente = null): array
     {
-        $item = StockAlquiler::create(['codigo' => 'P' . uniqid(), 'nombre' => 'Prenda', 'precio_alquiler' => 50000]);
-        $talle = $item->talles()->create(['talle' => 'M', 'cantidad_total' => 5, 'cantidad_disponible' => 3, 'cantidad_alquilada' => 2]);
+        $item = app(StockAlquilerService::class)->guardar(
+            new StockAlquiler,
+            ['codigo' => 'P'.uniqid(), 'nombre' => 'Prenda', 'precio_alquiler' => 50000],
+            [['id' => null, 'talle' => 'M', 'cantidad' => 5]],
+        );
+        $talle = $item->talles()->first();
 
-        $alquiler = Alquiler::create([
-            'cliente_id'   => ($cliente ?? Cliente::create(['nombre' => 'C']))->id,
+        $alquiler = app(AlquilerService::class)->crear([
+            'cliente_id' => ($cliente ?? Cliente::create(['nombre' => 'C']))->id,
             'fecha_inicio' => now()->subDays(5),
-            'fecha_fin'    => $fechaFin ?? now()->addDays(2),
-            'costo_total'  => 100000,
-            'garantia'     => $garantia,
-            'estado'       => EstadoAlquiler::Activo,
-        ]);
-        $alquiler->stockItems()->attach($item->id, ['talle_id' => $talle->id, 'cantidad' => 2]);
+            'fecha_fin' => $fechaFin ?? now()->addDays(2),
+            'costo_total' => 100000,
+            'garantia' => $garantia,
+        ], [['stock_id' => $item->id, 'talle_id' => $talle->id, 'cantidad' => 2]]);
 
-        return [$alquiler, $talle];
+        return [$alquiler, $talle->refresh()];
     }
 
     public function test_invitado_es_redirigido_al_login(): void

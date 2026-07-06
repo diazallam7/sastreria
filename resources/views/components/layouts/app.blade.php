@@ -130,6 +130,18 @@
             </main>
         </div>
 
+        {{-- Toast global (avisos efímeros, ej. errores de escaneo global) --}}
+        <div x-data class="pointer-events-none fixed inset-x-0 top-4 z-[110] flex justify-center px-4">
+            <div x-show="$store.toast.visible" x-cloak
+                x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                class="pointer-events-auto rounded-lg border px-4 py-3 text-sm shadow-lg"
+                :class="$store.toast.tipo === 'success' ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800'">
+                <i class="fa-solid" :class="$store.toast.tipo === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
+                <span x-text="$store.toast.message" class="ml-1"></span>
+            </div>
+        </div>
+
         {{-- Modal de confirmación global (reemplaza confirm() nativo) --}}
         <div x-data x-show="$store.confirm.show" x-cloak
             class="fixed inset-0 z-[100] flex items-center justify-center p-4"
