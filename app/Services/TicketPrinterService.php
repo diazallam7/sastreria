@@ -2,31 +2,37 @@
 
 namespace App\Services;
 
-use Mike42\Escpos\PrintConnectors\WindowsPrintConnector; // Para Windows
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;   // Para pruebas
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector; // Impresora térmica en red (ESC/POS sobre TCP)
 use Mike42\Escpos\Printer;
 
 class TicketPrinterService
 {
     /**
-     * @var Printer $printer
+     * @var Printer
      */
     protected $printer;
 
     /**
-     * @var string $printerName El nombre de la impresora en Windows o la ruta del archivo.
+     * @var string IP/host de la impresora de red (modo producción) o ruta del archivo (modo prueba).
      */
     protected $printerConfig;
 
     /**
-     * @var bool $isTestMode Si es true, usa FilePrintConnector.
+     * @var int Puerto TCP de la impresora (9100 = raw/JetDirect, estándar ESC/POS).
+     */
+    protected $printerPort;
+
+    /**
+     * @var bool Si es true, usa FilePrintConnector.
      */
     protected $isTestMode;
 
-    public function __construct(string $printerConfig = '', bool $isTestMode = false)
+    public function __construct(string $printerConfig = '', bool $isTestMode = false, int $printerPort = 9100)
     {
         $this->printerConfig = $printerConfig;
         $this->isTestMode = $isTestMode;
+        $this->printerPort = $printerPort;
         $this->connect();
     }
 
@@ -34,6 +40,7 @@ class TicketPrinterService
      * Establece la conexión con la impresora.
      *
      * @return void
+     *
      * @throws \Exception
      */
     protected function connect()
@@ -41,38 +48,39 @@ class TicketPrinterService
         try {
             if ($this->isTestMode) {
                 // Modo de prueba: imprime a un archivo
-                $filePath = storage_path('app/tickets/ticket_venta_' . date('YmdHis') . '_' . uniqid() . '.txt');
+                $filePath = storage_path('app/tickets/ticket_venta_'.date('YmdHis').'_'.uniqid().'.txt');
                 // Asegúrate de que el directorio exista
-                if (!file_exists(dirname($filePath))) {
+                if (! file_exists(dirname($filePath))) {
                     mkdir(dirname($filePath), 0777, true);
                 }
                 $connector = new FilePrintConnector($filePath);
             } else {
-                // Modo de producción: imprime a una impresora Windows
+                // Modo de producción: impresora térmica en red (IP:puerto, protocolo ESC/POS raw)
                 if (empty($this->printerConfig)) {
-                    throw new \Exception("El nombre de la impresora no está configurado para el modo de producción.");
+                    throw new \Exception('La IP de la impresora no está configurada para el modo de producción.');
                 }
-                $connector = new WindowsPrintConnector($this->printerConfig);
+                $connector = new NetworkPrintConnector($this->printerConfig, $this->printerPort);
             }
             $this->printer = new Printer($connector);
         } catch (\Exception $e) {
             // Es crucial capturar y relanzar la excepción para que el controlador pueda manejarla
-            throw new \Exception("No se pudo conectar a la impresora: " . $e->getMessage());
+            throw new \Exception('No se pudo conectar a la impresora: '.$e->getMessage());
         }
     }
 
     /**
      * Imprime un ticket de venta.
      *
-     * @param array $ventaData Datos generales de la venta (id, fecha, total, cajero, cliente)
-     * @param array $productos Array de productos con 'nombre', 'cantidad', 'precio_u', 'subtotal'
+     * @param  array  $ventaData  Datos generales de la venta (id, fecha, total, cajero, cliente)
+     * @param  array  $productos  Array de productos con 'nombre', 'cantidad', 'precio_u', 'subtotal'
      * @return bool True si la impresión fue exitosa.
+     *
      * @throws \Exception Si ocurre un error durante la impresión.
      */
     public function printSaleTicket(array $ventaData, array $productos): bool
     {
-        if (!$this->printer) {
-            throw new \Exception("La impresora no está conectada.");
+        if (! $this->printer) {
+            throw new \Exception('La impresora no está conectada.');
         }
 
         try {
@@ -93,15 +101,15 @@ class TicketPrinterService
             $this->printer->text("--------------------------------\n");
 
             $this->printer->setJustification(Printer::JUSTIFY_LEFT);
-            $this->printer->text("Nro Ticket: " . ($ventaData['id'] ?? 'N/A') . "\n");
-            $this->printer->text("Fecha: " . ($ventaData['fecha'] ?? date('Y-m-d H:i:s')) . "\n");
-            $this->printer->text("Cajero: " . ($ventaData['cajero'] ?? 'Desconocido') . "\n");
-            $this->printer->text("Cliente: " . ($ventaData['cliente'] ?? 'Consumidor Final') . "\n");
+            $this->printer->text('Nro Ticket: '.($ventaData['id'] ?? 'N/A')."\n");
+            $this->printer->text('Fecha: '.($ventaData['fecha'] ?? date('Y-m-d H:i:s'))."\n");
+            $this->printer->text('Cajero: '.($ventaData['cajero'] ?? 'Desconocido')."\n");
+            $this->printer->text('Cliente: '.($ventaData['cliente'] ?? 'Consumidor Final')."\n");
             $this->printer->text("--------------------------------\n");
 
             // --- Detalles de Productos ---
             // Formato: Nombre (18 chars) | Cant (5 chars) | Total (8 chars)
-            $this->printer->text(sprintf("%-18s %5s %8s\n", "Producto", "Cant", "Total"));
+            $this->printer->text(sprintf("%-18s %5s %8s\n", 'Producto', 'Cant', 'Total'));
             $this->printer->text("--------------------------------\n");
 
             foreach ($productos as $producto) {
@@ -143,7 +151,7 @@ class TicketPrinterService
 
         } catch (\Exception $e) {
             // Si hay un error durante la impresión (ej. papel atascado, sin papel)
-            throw new \Exception("Error al enviar datos a la impresora: " . $e->getMessage());
+            throw new \Exception('Error al enviar datos a la impresora: '.$e->getMessage());
         } finally {
             // Siempre cierra la conexión a la impresora
             $this->close();

@@ -18,9 +18,9 @@ class VentaService
     {
         return DB::transaction(function () use ($datos, $items) {
             $venta = Venta::create([
-                'cliente_id'   => $datos['cliente_id'],
-                'user_id'      => auth()->id(),
-                'fecha_venta'  => $datos['fecha_venta'] ?? now(),
+                'cliente_id' => $datos['cliente_id'],
+                'user_id' => auth()->id(),
+                'fecha_venta' => $datos['fecha_venta'] ?? now(),
                 'precio_total' => 0,
             ]);
 
@@ -41,8 +41,8 @@ class VentaService
             $venta->detalles()->delete();
 
             $venta->update([
-                'cliente_id'   => $datos['cliente_id'],
-                'fecha_venta'  => $datos['fecha_venta'] ?? $venta->fecha_venta,
+                'cliente_id' => $datos['cliente_id'],
+                'fecha_venta' => $datos['fecha_venta'] ?? $venta->fecha_venta,
                 'precio_total' => $this->aplicarItems($venta->refresh(), $items),
             ]);
 
@@ -83,11 +83,11 @@ class VentaService
 
             $venta->detalles()->create([
                 'producto_talle_id' => $talle->id,
-                'nombre_producto'   => $producto->nombre,
-                'talle'             => $talle->talle,
-                'cantidad'          => $item['cantidad'],
-                'precio_unitario'   => $precio,
-                'subtotal'          => $subtotal,
+                'nombre_producto' => $producto->nombre,
+                'talle' => $talle->talle,
+                'cantidad' => $item['cantidad'],
+                'precio_unitario' => $precio,
+                'subtotal' => $subtotal,
             ]);
 
             $talle->decrement('cantidad_disponible', $item['cantidad']);
@@ -119,20 +119,24 @@ class VentaService
             $venta->loadMissing('cliente', 'user', 'detalles');
 
             $ventaData = [
-                'id'           => $venta->id,
-                'fecha'        => $venta->fecha_venta->format('Y-m-d H:i:s'),
-                'cajero'       => $venta->user?->name ?? 'Desconocido',
-                'cliente'      => $venta->cliente?->nombre ?? 'Consumidor Final',
+                'id' => $venta->id,
+                'fecha' => $venta->fecha_venta->format('Y-m-d H:i:s'),
+                'cajero' => $venta->user?->name ?? 'Desconocido',
+                'cliente' => $venta->cliente?->nombre ?? 'Consumidor Final',
                 'precio_total' => $venta->precio_total,
             ];
 
             $productos = $venta->detalles->map(fn ($d) => [
-                'nombre'   => $d->nombre_producto . ' (T:' . $d->talle . ')',
+                'nombre' => $d->nombre_producto.' (T:'.$d->talle.')',
                 'cantidad' => $d->cantidad,
                 'subtotal' => $d->subtotal,
             ])->all();
 
-            (new TicketPrinterService(isTestMode: true))->printSaleTicket($ventaData, $productos);
+            (new TicketPrinterService(
+                printerConfig: (string) config('services.printer.host'),
+                isTestMode: (bool) config('services.printer.test_mode'),
+                printerPort: (int) config('services.printer.port'),
+            ))->printSaleTicket($ventaData, $productos);
 
             return 'Venta registrada correctamente.';
         } catch (\Throwable $e) {

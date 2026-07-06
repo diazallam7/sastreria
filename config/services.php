@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    /*
+    | Impresora térmica ESC/POS. En producción (Linux/Docker) se conecta por
+    | red (TCP), no por Windows — la mayoría de las térmicas modernas exponen
+    | un puerto raw (9100 por defecto, protocolo JetDirect).
+    */
+    'printer' => [
+        'test_mode' => env('PRINTER_TEST_MODE', true),
+        'host' => env('PRINTER_HOST'),
+        'port' => env('PRINTER_PORT', 9100),
+    ],
+
 ];
