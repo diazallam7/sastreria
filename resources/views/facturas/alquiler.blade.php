@@ -2,29 +2,52 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Factura Alquiler</title>
+    <title>Factura Alquiler #{{ $alquiler->id }}</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .details { margin-bottom: 20px; }
-        .footer { text-align: center; margin-top: 30px; font-size: 12px; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #222; }
+        .header { text-align: center; margin-bottom: 16px; }
+        .header h2 { margin: 0; }
+        .meta { margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 6px; border-bottom: 1px solid #eee; text-align: left; }
+        .r { text-align: right; }
+        .totales { margin-top: 16px; }
+        .totales div { margin: 2px 0; }
+        .footer { text-align: center; margin-top: 28px; font-size: 11px; color: #666; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h2>Comprobante de Alquiler</h2>
+        <h2>Sastrería Medina</h2>
+        <div>Comprobante de alquiler #{{ $alquiler->id }}</div>
     </div>
 
-    <div class="details">
-        <p><strong>Cliente:</strong> {{ $alquiler->cliente->nombre }}</p>
-        <p><strong>Vestido Alquilado:</strong> {{ $alquiler->vestido->nombre }}</p>
-        <p><strong>Fechas:</strong> Desde {{ $alquiler->fecha_inicio }} hasta {{ $alquiler->fecha_fin }}</p>
-        <p><strong>Costo Total:</strong> {{ number_format($alquiler->costo_total, 0, ',', '.') }} Gs.</p>
+    <div class="meta">
+        <strong>Cliente:</strong> {{ $alquiler->cliente?->nombre ?? '—' }}<br>
+        <strong>Período:</strong> {{ $alquiler->fecha_inicio->format('d/m/Y') }} — {{ $alquiler->fecha_fin->format('d/m/Y') }}
     </div>
 
-    <div class="footer">
-        <p>Gracias por confiar en nosotros. ¡Esperamos verte pronto!</p>
+    <table>
+        <thead>
+            <tr><th>Prenda</th><th>Código</th><th>Talle</th><th class="r">Cantidad</th></tr>
+        </thead>
+        <tbody>
+            @foreach ($alquiler->stockItems as $s)
+                <tr>
+                    <td>{{ $s->nombre }}</td>
+                    <td>{{ $s->codigo }}</td>
+                    <td>{{ $tallesNombres[$s->pivot->talle_id] ?? '—' }}</td>
+                    <td class="r">{{ $s->pivot->cantidad }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div class="totales">
+        <div><strong>Costo total:</strong> ₲ {{ number_format($alquiler->costo_total, 0, ',', '.') }}</div>
+        <div><strong>Garantía:</strong> ₲ {{ number_format($alquiler->garantia, 0, ',', '.') }}</div>
     </div>
+
+    <div class="footer">¡Gracias por confiar en nosotros!</div>
 </body>
 </html>

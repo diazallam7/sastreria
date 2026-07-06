@@ -1,15 +1,19 @@
 <?php
-// Archivo: app/Models/Reserva.php
 
 namespace App\Models;
 
+use App\Enums\EstadoReserva;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class Reserva extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'cliente_id',
@@ -19,103 +23,85 @@ class Reserva extends Model
         'fecha_devolucion_programada',
         'monto_total',
         'garantia_total',
-        'seña_garantia',
-        'seña_alquiler',
+        'senia_garantia',
+        'senia_alquiler',
+        'senia_devuelta',
+        'motivo_devolucion',
         'estado',
         'observaciones',
         'alquiler_id',
-        'seña_devuelta',       
-    'motivo_devolucion'
     ];
 
     protected $casts = [
-        'fecha_reserva' => 'date',
-        'fecha_evento' => 'date',
-        'fecha_entrega_programada' => 'date',
+        'fecha_reserva'               => 'date',
+        'fecha_entrega_programada'    => 'date',
         'fecha_devolucion_programada' => 'date',
-        'monto_total' => 'decimal:2',
-        'garantia_total' => 'decimal:2',
-        'seña_garantia' => 'decimal:2',
-        'seña_alquiler' => 'decimal:2',
-    'seña_devuelta' => 'decimal:2'
+        'monto_total'                 => 'integer',
+        'garantia_total'              => 'integer',
+        'senia_garantia'              => 'integer',
+        'senia_alquiler'              => 'integer',
+        'senia_devuelta'              => 'integer',
+        'estado'                      => EstadoReserva::class,
     ];
 
-    // Relaciones
-    public function cliente()
+    /* ----------------------------- Relaciones ----------------------------- */
+
+    public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function alquiler()
+    public function alquiler(): BelongsTo
     {
         return $this->belongsTo(Alquiler::class);
     }
 
-    public function stockItems()
+    public function stockItems(): BelongsToMany
     {
         return $this->belongsToMany(StockAlquiler::class, 'reserva_stock', 'reserva_id', 'stock_id')
-                    ->withPivot('talle_id', 'cantidad')
-                    ->withTimestamps();
+            ->withPivot('talle_id', 'cantidad')
+            ->withTimestamps();
     }
 
+    /* ------------------------------- Scopes ------------------------------- */
 
-    // Accessors
-    public function getMontoFormateadoAttribute()
+    public function scopePendientesEntrega(Builder $query): Builder
     {
-        return '₲ ' . number_format($this->monto_total, 0, ',', '.');
+        return $query->where('estado', EstadoReserva::Confirmada->value)
+            ->where('fecha_entrega_programada', '<=', Carbon::now());
     }
 
-    public function getGarantiaFormateadaAttribute()
+    public function scopeProximasEntregas(Builder $query): Builder
     {
-        return '₲ ' . number_format($this->garantia_total, 0, ',', '.');
+        return $query->where('estado', EstadoReserva::Confirmada->value)
+            ->whereBetween('fecha_entrega_programada', [Carbon::now(), Carbon::now()->addDays(7)]);
     }
 
-    public function getSeniaGarantiaFormateadaAttribute()
+    /* ----------------------------- Accessors ------------------------------ */
+
+    public function getSaldoAlquilerAttribute(): int
     {
-        return '₲ ' . number_format($this->seña_garantia, 0, ',', '.');
+        return (int) $this->monto_total - (int) $this->senia_alquiler;
     }
 
-    public function getSeniaAlquilerFormateadaAttribute()
+    public function getSaldoGarantiaAttribute(): int
     {
-        return '₲ ' . number_format($this->seña_alquiler, 0, ',', '.');
+        return (int) $this->garantia_total - (int) $this->senia_garantia;
     }
 
-    public function getSaldoAlquilerAttribute()
+    public function getTotalACobrarAttribute(): int
     {
-        return $this->monto_total - $this->seña_alquiler;
+        return $this->saldo_alquiler + $this->saldo_garantia;
     }
 
-    public function getSaldoGarantiaAttribute()
+    /** Total efectivamente recibido del cliente (seña de alquiler + garantía). */
+    public function getTotalRecibidoAttribute(): int
     {
-        return $this->garantia_total - $this->seña_garantia;
-    }
-
-    public function getTotalACobrarAttribute()
-    {
-        return $this->getSaldoAlquilerAttribute() + $this->getSaldoGarantiaAttribute();
-    }
-
-    public function getSeniaDevueltaFormateadaAttribute()
-{
-    return '₲ ' . number_format($this->seña_devuelta ?? 0, 0, ',', '.');
-}
-
-    // Scopes
-    public function scopePendientesEntrega($query)
-    {
-        return $query->where('estado', 'confirmada')
-                    ->where('fecha_entrega_programada', '<=', Carbon::now());
-    }
-
-    public function scopeProximasEntregas($query)
-    {
-        return $query->where('estado', 'confirmada')
-                    ->where('fecha_entrega_programada', '>', Carbon::now())
-                    ->where('fecha_entrega_programada', '<=', Carbon::now()->addDays(7));
+        return (int) $this->senia_alquiler + (int) $this->senia_garantia;
     }
 }

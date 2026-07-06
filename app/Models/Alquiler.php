@@ -1,47 +1,72 @@
 <?php
-// Archivo: app/Models/Alquiler.php - Actualización
 
 namespace App\Models;
 
+use App\Enums\EstadoAlquiler;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Alquiler extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'alquileres';
+
     protected $fillable = [
         'cliente_id',
         'fecha_inicio',
         'fecha_fin',
         'costo_total',
         'garantia',
-        'estado'
+        'estado',
     ];
 
     protected $casts = [
-        'fecha_inicio' => 'datetime',
-        'fecha_fin' => 'datetime',
+        'fecha_inicio' => 'date',
+        'fecha_fin'    => 'date',
+        'costo_total'  => 'integer',
+        'garantia'     => 'integer',
+        'estado'       => EstadoAlquiler::class,
     ];
 
-    public function cliente()
+    public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
     }
 
-    public function stockItems()
-{
-    return $this->belongsToMany(StockAlquiler::class, 'alquiler_stock', 'alquiler_id', 'stock_id')
-           ->withPivot('talle_id', 'cantidad')
-           ->withTimestamps(); // opcional, si quieres incluir created_at y updated_at
-}
+    public function stockItems(): BelongsToMany
+    {
+        return $this->belongsToMany(StockAlquiler::class, 'alquiler_stock', 'alquiler_id', 'stock_id')
+            ->withPivot('talle_id', 'cantidad')
+            ->withTimestamps();
+    }
 
-    // Nueva relación con reserva
-    public function reserva()
+    public function reserva(): HasOne
     {
         return $this->hasOne(Reserva::class);
     }
 
+    public function devolucion(): HasOne
+    {
+        return $this->hasOne(Devolucion::class);
+    }
 
+    /* ------------------------------- Scopes ------------------------------- */
+
+    public function scopeActivos(Builder $query): Builder
+    {
+        return $query->where('estado', EstadoAlquiler::Activo->value);
+    }
+
+    /* ------------------------------ Helpers ------------------------------- */
+
+    public function estaActivo(): bool
+    {
+        return $this->estado === EstadoAlquiler::Activo;
+    }
 }

@@ -1,15 +1,16 @@
 <?php
-// Archivo: app/Models/Devolucion.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Devolucion extends Model
 {
-    use HasFactory;
-    
+    use HasFactory, SoftDeletes;
+
     protected $table = 'devoluciones';
 
     protected $fillable = [
@@ -17,51 +18,32 @@ class Devolucion extends Model
         'user_id',
         'fecha_devolucion',
         'retraso',
-        'multa',
-        'multa_calculada',
-        'multa_aplicada_real',
-        'garantia_original',
-        'multa_aplicada',
-        'monto_devuelto',
-        'monto_devuelto_real',
         'dias_retraso',
+        'multa_calculada',   // corresponde por retraso (calculada por el sistema)
+        'multa_aplicada',    // realmente cobrada (puede diferir por ajuste manual)
+        'garantia_original',
+        'monto_devuelto',    // garantia_original - multa_aplicada (nunca < 0)
+        'motivo_ajuste',
         'observaciones',
-        'motivo_ajuste'
     ];
 
     protected $casts = [
-        'fecha_devolucion' => 'date',
-        'garantia_original' => 'decimal:2',
-        'multa_aplicada' => 'decimal:2',
-        'monto_devuelto' => 'decimal:2',
-        'multa_calculada' => 'decimal:2',
-        'multa_aplicada_real' => 'decimal:2',
-        'monto_devuelto_real' => 'decimal:2'
+        'fecha_devolucion'  => 'datetime',
+        'retraso'           => 'boolean',
+        'dias_retraso'      => 'integer',
+        'multa_calculada'   => 'integer',
+        'multa_aplicada'    => 'integer',
+        'garantia_original' => 'integer',
+        'monto_devuelto'    => 'integer',
     ];
 
-    public function alquiler()
+    public function alquiler(): BelongsTo
     {
         return $this->belongsTo(Alquiler::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    // Accessors para formatear montos
-    public function getMultaCalculadaFormateadaAttribute()
-    {
-        return '₲ ' . number_format($this->multa_calculada ?? 0, 0, ',', '.');
-    }
-
-    public function getMultaAplicadaRealFormateadaAttribute()
-    {
-        return '₲ ' . number_format($this->multa_aplicada_real ?? 0, 0, ',', '.');
-    }
-
-    public function getMontoDevueltoRealFormateadoAttribute()
-    {
-        return '₲ ' . number_format($this->monto_devuelto_real ?? 0, 0, ',', '.');
     }
 }

@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            // Usuario oculto (soporte/dev): existe y puede iniciar sesión, pero no se lista en la UI.
+            $table->boolean('oculto')->default(false);
             $table->rememberToken();
             $table->timestamps();
         });

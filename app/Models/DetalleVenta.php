@@ -1,14 +1,10 @@
 <?php
-// Archivo: app/Models/DetalleVenta.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Compra;
-use App\Models\ProductoVenta;
-use App\Models\TalleCompra;
-use App\Models\TalleProductoVenta;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DetalleVenta extends Model
 {
@@ -16,39 +12,28 @@ class DetalleVenta extends Model
 
     protected $fillable = [
         'venta_id',
-        'tipo_producto',
-        'producto_id',
-        'talle_id',
+        'producto_talle_id',
+        'nombre_producto', // snapshot al momento de la venta
+        'talle',           // snapshot
         'cantidad',
         'precio_unitario',
         'subtotal',
     ];
 
     protected $casts = [
-        'precio_unitario' => 'decimal:2',
-        'subtotal' => 'decimal:2',
+        'cantidad'        => 'integer',
+        'precio_unitario' => 'integer',
+        'subtotal'        => 'integer',
     ];
 
-    public function venta()
+    public function venta(): BelongsTo
     {
         return $this->belongsTo(Venta::class);
     }
 
-    public function getProductoAttribute()
+    /** Puede ser null si el talle/producto fue eliminado después de la venta. */
+    public function productoTalle(): BelongsTo
     {
-        if ($this->tipo_producto === 'compra') {
-            return Compra::find($this->producto_id);
-        } else {
-            return ProductoVenta::find($this->producto_id);
-        }
-    }
-
-    public function getTalleAttribute()
-    {
-        if ($this->tipo_producto === 'compra') {
-            return TalleCompra::find($this->talle_id);
-        } else {
-            return TalleProductoVenta::find($this->talle_id);
-        }
+        return $this->belongsTo(ProductoTalle::class);
     }
 }

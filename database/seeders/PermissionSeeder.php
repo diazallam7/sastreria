@@ -18,12 +18,19 @@ class PermissionSeeder extends Seeder
             'crear-cliente',
             'editar-cliente',
             'eliminar-cliente',
-            //compra
-            'ver-compra',
-            'crear-compra',
-            'editar-compra',
-            'mostrar-compra',
-            'eliminar-compra',
+            //producto
+            'ver-producto',
+            'crear-producto',
+            'editar-producto',
+            'eliminar-producto',
+            //reserva
+            'ver-reserva',
+            'crear-reserva',
+            'editar-reserva',
+            'eliminar-reserva',
+            //devolucion
+            'ver-devolucion',
+            'crear-devolucion',
             //producto
             'ver-stock-alquiler',
             'crear-stock-alquiler',
@@ -64,9 +71,8 @@ class PermissionSeeder extends Seeder
             
         ];
 
-        foreach($permisos as $permiso){
-            Permission::create(['name'=>$permiso]);
+        foreach ($permisos as $permiso) {
+            Permission::findOrCreate($permiso, 'web');
         }
-
     }
 }
