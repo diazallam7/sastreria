@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'DNS1D' => Milon\Barcode\Facades\DNS1DFacade::class,
             'DNS2D' => Milon\Barcode\Facades\DNS2DFacade::class,
         ]);
+
+        // Coolify/Traefik terminan TLS y reenvian al container por HTTP interno.
+        // Sin esto, Laravel no confia en el header X-Forwarded-Proto y genera
+        // URLs http:// (asset/url helpers), rompiendo mixed content en produccion.
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
